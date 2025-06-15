@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2 } from "lucide-react"
+import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Database } from "@/lib/supabase/types"
@@ -76,6 +76,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
   const categories = ["Text to Image"]
+  const [userName, setUserName] = useState<string | null>(null)
+  const [isFreeUser, setIsFreeUser] = useState(false)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -364,6 +366,21 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     }
     fetchQuota()
   }, [supabase, quotaLimit])
+
+  useEffect(() => {
+    async function fetchUser() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email, is_premium")
+        .eq("id", session.user.id)
+        .single();
+      setUserName(profile?.full_name || profile?.email || session.user.email || "User");
+      setIsFreeUser(!profile?.is_premium);
+    }
+    fetchUser();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
@@ -806,61 +823,69 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/v1.1-ultra">
+                                    <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <Rocket className="w-4 h-4 text-pink-600" />
                                         <span className="font-semibold">FLUX Pro Ultra</span>
                                         <span className="text-pink-700 ml-2">$0.06/image</span>
                                         <span className="text-orange-500 ml-1">$0.04/standard</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v2">
+                                    <SelectItem value="fal-ai/ideogram/v2" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <PenTool className="w-4 h-4 text-blue-500" />
                                         <span className="font-semibold">Ideogram v2</span>
                                         <span className="text-blue-600 ml-2">$0.08/image</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v3">
+                                    <SelectItem value="fal-ai/ideogram/v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <PenTool className="w-4 h-4 text-blue-700" />
                                         <span className="font-semibold">Ideogram v3</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/recraft-v3">
+                                    <SelectItem value="fal-ai/recraft-v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <Palette className="w-4 h-4 text-purple-700" />
                                         <span className="font-semibold">Recraft V3</span>
                                         <span className="text-purple-700 ml-2">$0.04/image</span>
                                         <span className="text-purple-400 ml-1">$0.08/vector</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/stable-diffusion-v35-large">
+                                    <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <Brain className="w-4 h-4 text-indigo-500" />
                                         <span className="font-semibold">Stable Diffusion 3.5 Large</span>
                                         <span className="text-indigo-600 ml-2">$0.065/image</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/hidream-i1-fast">
+                                    <SelectItem value="fal-ai/hidream-i1-fast" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <Rocket className="w-4 h-4 text-cyan-600" />
                                         <span className="font-semibold">HiDream I1 Fast</span>
                                         <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/kontext/text-to-image">
+                                    <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <Brain className="w-4 h-4 text-orange-600" />
                                         <span className="font-semibold">FLUX Kontext T2I</span>
                                         <span className="text-orange-700 ml-2">$0.04/image</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/imagen4/preview">
+                                    <SelectItem value="fal-ai/imagen4/preview" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
                                       <span className="inline-flex items-center gap-2">
                                         <ImageIcon className="w-4 h-4 text-pink-500" />
                                         <span className="font-semibold">Imagen 4 Preview</span>
                                         <span className="text-pink-700 ml-2">$0.05/image</span>
+                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
                                   </SelectContent>
@@ -1052,8 +1077,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                             <User className="w-10 h-10 text-white" />
                           </div>
-                          <h3 className="text-lg font-semibold">Welcome to AI Image Studio</h3>
-                          <p className="text-gray-600 dark:text-gray-400">You've generated {images.length} images so far</p>
+                          <h3 className="text-lg font-semibold">
+                            {userName ? `Welcome, ${userName}` : "Welcome"}
+                          </h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
@@ -1075,6 +1101,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <div className="text-xs text-gray-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : "-"}</div>
                           </div>
                         </div>
+                      </div>
+                      <div className="flex justify-center mt-10 mb-2">
+                        <Button
+                          onClick={handleSignOut}
+                          className="flex items-center justify-center gap-3 px-12 py-4 rounded-full text-lg font-bold bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg border-2 border-red-500 hover:from-red-700 hover:to-pink-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-red-300 w-full sm:w-auto"
+                          style={{ minWidth: 220 }}
+                        >
+                          <LogOut className="w-7 h-7" />
+                          <span className="tracking-wide">Log Out</span>
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

@@ -9,6 +9,7 @@ export interface Database {
           avatar_url: string | null
           created_at: string
           updated_at: string
+          is_premium: boolean | null
         }
         Insert: {
           id: string
@@ -17,6 +18,7 @@ export interface Database {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          is_premium?: boolean | null
         }
         Update: {
           id?: string
@@ -24,6 +26,7 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           updated_at?: string
+          is_premium?: boolean | null
         }
       }
       generated_images: {

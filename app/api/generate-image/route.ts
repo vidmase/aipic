@@ -35,6 +35,20 @@ export async function POST(request: NextRequest) {
 
     const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = await request.json()
 
+    // Fetch user profile to check premium status
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_premium")
+      .eq("id", session.user.id)
+      .single();
+    const FREE_MODELS = ['fal-ai/fast-sdxl', 'fal-ai/flux/dev'];
+    const isFreeUser = !profile?.is_premium;
+    if (isFreeUser && !FREE_MODELS.includes(model)) {
+      return NextResponse.json({
+        error: "This model is only available to premium users. Please upgrade to unlock."
+      }, { status: 403 });
+    }
+
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }

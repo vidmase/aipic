@@ -26,10 +26,10 @@ export function GalleryContent({ images }: GalleryContentProps) {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
       {/* Header */}
       <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" asChild>
+        <div className="container mx-auto px-2 py-3 sm:px-4 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+            <div className="flex items-center space-x-2 w-full sm:w-auto justify-between">
+              <Button variant="ghost" asChild className="px-2 py-1">
                 <Link href="/">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -43,19 +43,19 @@ export function GalleryContent({ images }: GalleryContentProps) {
                   AI Image Gallery
                 </span>
               </div>
+              <Button asChild className="ml-2 px-3 py-2 text-sm sm:text-base">
+                <Link href="/auth/signup">Start Creating</Link>
+              </Button>
             </div>
-            <Button asChild>
-              <Link href="/auth/signup">Start Creating</Link>
-            </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 py-6 sm:px-4 sm:py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Community Gallery</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
-            Discover amazing AI-generated images from our community
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">Gallery Highlights</h1>
+          <p className="text-base sm:text-xl text-gray-600 dark:text-gray-300">
+            See standout AI creations from our community.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export function GalleryContent({ images }: GalleryContentProps) {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {images.map((image) => (
               <Card
                 key={image.id}

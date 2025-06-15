@@ -348,11 +348,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     }
   }
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = (category: string, checked: boolean | "indeterminate") => {
     setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
+      checked
+        ? [...prev, category]
+        : prev.filter((c) => c !== category)
     )
   }
 
@@ -435,18 +435,22 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       <div className="relative z-10">
         {/* Header */}
         <header className="bg-white/90 dark:bg-gray-900/90 shadow-sm sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="container mx-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 w-full sm:w-auto justify-between">
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shadow">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent tracking-tight select-none">
                 AI Image Studio
               </span>
+              {/* Hamburger for mobile */}
+              <button className="sm:hidden ml-auto" onClick={() => setUserMenuOpen((open) => !open)}>
+                <Menu className="w-7 h-7 text-purple-600" />
+              </button>
             </div>
             {/* Menu */}
-            <nav className="flex items-center gap-2 md:gap-4">
+            <nav className="hidden sm:flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
               <Button
                 variant={activeTab === "generate" ? "default" : "ghost"}
                 onClick={() => setActiveTab("generate")}
@@ -478,43 +482,51 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               >
                 <span>Import Image</span>
               </Button>
-              {/* User Menu */}
-              <div className="relative ml-2">
-                <button
-                  className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow hover:scale-105 transition-transform focus:outline-none"
-                  onClick={() => setUserMenuOpen((open) => !open)}
-                  aria-label="User menu"
-                  type="button"
-                >
-                  <UserCircle className="w-6 h-6" />
-                  <span className="hidden md:inline font-semibold">Profile</span>
-                </button>
-                {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                      onClick={() => { setActiveTab("profile"); setUserMenuOpen(false); }}
-                    >
-                      <UserCircle className="w-5 h-5" /> Profile
-                    </button>
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-red-600"
-                      onClick={() => { handleSignOut(); setUserMenuOpen(false); }}
-                    >
-                      <LogOut className="w-5 h-5" /> Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
             </nav>
+            {/* Mobile nav */}
+            {userMenuOpen && (
+              <nav className="flex flex-col gap-2 w-full sm:hidden bg-white dark:bg-gray-900 rounded-lg shadow p-2 mt-2 z-50">
+                <Button
+                  variant={activeTab === "generate" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("generate")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Generate</span>
+                </Button>
+                <Button
+                  variant={activeTab === "history" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("history")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
+                  <History className="w-4 h-4" />
+                  <span>History</span>
+                </Button>
+                <Button
+                  variant={activeTab === "albums" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("albums")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-gradient-to-r from-green-400 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
+                  <Folder className="w-4 h-4" />
+                  <span>Albums</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setPinDialogOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <span>Import Image</span>
+                </Button>
+              </nav>
+            )}
           </div>
         </header>
 
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row gap-8">
+        <div className="container mx-auto px-2 py-4">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-8">
             {/* Categories Sidebar - only show on Generate tab */}
             {activeTab === "generate" && (
-              <Card className="w-full md:w-64 bg-white/90 dark:bg-gray-900/90 border-0 shadow-lg mb-8 md:mb-0">
+              <Card className="w-full md:w-64 bg-white/90 dark:bg-gray-900/90 border-0 shadow-lg mb-4 md:mb-0">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold">Category</CardTitle>
                 </CardHeader>
@@ -527,7 +539,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       >
                         <Checkbox
                           checked={selectedCategories.includes(category)}
-                          onCheckedChange={() => handleCategoryChange(category)}
+                          onCheckedChange={checked => handleCategoryChange(category, checked)}
                           className="rounded border-gray-400 focus:ring-2 focus:ring-blue-500"
                         />
                         <span>{category}</span>
@@ -539,7 +551,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               </Card>
             )}
             {/* Main Content */}
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               {activeTab === "generate" && (
                 <div className="grid lg:grid-cols-2 gap-8">
                   {selectedCategories.length === 0 ? (

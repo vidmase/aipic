@@ -1,8 +1,7 @@
 "use client"
 
-import React from "react"
+import React, { useEffect, useState } from "react"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -77,6 +76,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [upscaleLoading, setUpscaleLoading] = useState(false)
   const [upscaleResult, setUpscaleResult] = useState<string>("")
   const [upscaleError, setUpscaleError] = useState<string>("")
+  const [quotaUsed, setQuotaUsed] = useState<number | null>(null)
+  const [quotaLimit, setQuotaLimit] = useState<number>(3) // Keep in sync with API
+  const [quotaLeft, setQuotaLeft] = useState<number | null>(null)
   const categories = ["Text to Image", "Image Upscaler"]
 
   const handleSignOut = async () => {
@@ -408,6 +410,22 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setUpscaleLoading(false)
     }
   }
+
+  useEffect(() => {
+    async function fetchQuota() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const { count } = await supabase
+        .from("generated_images")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", session.user.id)
+        .gte("created_at", since)
+      setQuotaUsed(count ?? 0)
+      setQuotaLeft(quotaLimit - (count ?? 0))
+    }
+    fetchQuota()
+  }, [supabase, quotaLimit])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
@@ -1101,27 +1119,23 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           <p className="text-gray-600 dark:text-gray-400">You've generated {images.length} images so far</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                           <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                             <div className="text-2xl font-bold text-purple-600">{images.length}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">Images Generated</div>
                           </div>
                           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {new Set(images.map((img) => img.model)).size}
-                            </div>
+                            <div className="text-2xl font-bold text-blue-600">{new Set(images.map((img) => img.model)).size}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">Models Used</div>
                           </div>
                           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">
-                              {images.length > 0
-                                ? Math.ceil(
-                                    (Date.now() - new Date(images[images.length - 1].created_at).getTime()) /
-                                      (1000 * 60 * 60 * 24),
-                                  )
-                                : 0}
-                            </div>
+                            <div className="text-2xl font-bold text-green-600">{images.length > 0 ? Math.ceil((Date.now() - new Date(images[images.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">Days Active</div>
+                          </div>
+                          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                            <div className="text-2xl font-bold text-yellow-600">{quotaLeft !== null ? quotaLeft : "-"}</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Images Left (24h)</div>
+                            <div className="text-xs text-gray-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : "-"}</div>
                           </div>
                         </div>
                       </div>

@@ -79,6 +79,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [quotaUsed, setQuotaUsed] = useState<number | null>(null)
   const [quotaLimit, setQuotaLimit] = useState<number>(3) // Keep in sync with API
   const [quotaLeft, setQuotaLeft] = useState<number | null>(null)
+  const [pinDialogOpen, setPinDialogOpen] = useState(false)
+  const [pinInput, setPinInput] = useState("")
+  const [pinError, setPinError] = useState("")
   const categories = ["Text to Image", "Image Upscaler"]
 
   const handleSignOut = async () => {
@@ -470,7 +473,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setImportDialogOpen(true)}
+                onClick={() => setPinDialogOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <span>Import Image</span>
@@ -1425,6 +1428,46 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 Cancel
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
+          <DialogContent>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (pinInput === "1255") {
+                  setPinDialogOpen(false);
+                  setPinInput("");
+                  setPinError("");
+                  setImportDialogOpen(true);
+                } else {
+                  setPinError("Incorrect pin. Please try again or contact support if you need help.");
+                }
+              }}
+              className="space-y-4"
+            >
+              <DialogHeader>
+                <DialogTitle>Enter Pin Code</DialogTitle>
+                <DialogDescription>Access to import images is restricted. Please enter the 4-digit pin code to continue.</DialogDescription>
+              </DialogHeader>
+              <Input
+                type="password"
+                maxLength={4}
+                value={pinInput}
+                onChange={e => { setPinInput(e.target.value); setPinError(""); }}
+                placeholder="4-digit pin"
+                autoFocus
+                className="text-center tracking-widest text-lg"
+              />
+              {pinError && <div className="text-red-500 text-sm text-center">{pinError}</div>}
+              <DialogFooter>
+                <Button type="submit" className="w-full">Continue</Button>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancel</Button>
+                </DialogClose>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

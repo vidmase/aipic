@@ -13,6 +13,19 @@ A modern dashboard for AI-powered image generation and upscaling, built with Nex
 
 ---
 
+## 🖼️ Previews
+
+<p align="center">
+  <img src="public/preview_generate.png" alt="Generate Tab Preview" width="45%" style="display:inline-block; margin-right:10px;"/>
+  <img src="public/preview_generate2.png" alt="Gallery Tab Preview" width="45%" style="display:inline-block;"/>
+</p>
+
+<p align="center">
+  <i>Left: Generate Tab &nbsp; | &nbsp; Right: Gallery/History Tab</i>
+</p>
+
+---
+
 ## ✨ Features
 - **Text-to-Image Generation** using FAL.AI
 - **Image Upscaling** via FAL.AI /recraft/upscale/crisp

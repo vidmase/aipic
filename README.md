@@ -1,7 +1,5 @@
 # aipic
 
-![Project Preview](public/preview_generate.png)
-
 <p align="center">
   <b>AI Image Generation & Upscaling Dashboard</b><br>
   <a href="https://github.com/vidmase/aipic/actions"><img src="https://github.com/vidmase/aipic/actions/workflows/ci.yml/badge.svg" alt="Build Status"></a>
@@ -12,14 +10,6 @@
 
 ## 🚀 Overview
 A modern dashboard for AI-powered image generation and upscaling, built with Next.js, Supabase, and FAL.AI APIs. Easily generate images from text prompts, upscale images, and manage your creations in a beautiful, user-friendly interface.
-
----
-
-## 🖼️ Sneak Peek
-
-![Generate Tab Preview](public/preview_generate.png)
-
-*Above: The "Generate" tab lets you create stunning images from text prompts and upscale your own images with a single click!*
 
 ---
 

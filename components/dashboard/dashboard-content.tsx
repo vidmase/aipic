@@ -26,7 +26,7 @@ interface DashboardContentProps {
 
 export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState("fal-ai/fast-sdxl")
+  const [model, setModel] = useState("fal-ai/ideogram/v2")
   const [aspectRatio, setAspectRatio] = useState("1:1")
   const [loading, setLoading] = useState(false)
   const [images, setImages] = useState<GeneratedImage[]>(initialImages)
@@ -46,7 +46,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [promptDialogOpen, setPromptDialogOpen] = useState(false)
   const [promptDialogText, setPromptDialogText] = useState("")
   const [copied, setCopied] = useState(false)
-  const [promptSuggestionsOpen, setPromptSuggestionsOpen] = useState(false)
   const [improvingPrompt, setImprovingPrompt] = useState(false)
   const [albums, setAlbums] = useState<any[]>([])
   const [selectedAlbum, setSelectedAlbum] = useState<any | null>(null)
@@ -70,19 +69,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [colorPalette, setColorPalette] = useState('')
   const [customPalette, setCustomPalette] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [upscaleFile, setUpscaleFile] = useState<File | null>(null)
-  const [upscaleUrl, setUpscaleUrl] = useState<string>("")
-  const [upscaleSafety, setUpscaleSafety] = useState(false)
-  const [upscaleLoading, setUpscaleLoading] = useState(false)
-  const [upscaleResult, setUpscaleResult] = useState<string>("")
-  const [upscaleError, setUpscaleError] = useState<string>("")
   const [quotaUsed, setQuotaUsed] = useState<number | null>(null)
   const [quotaLimit, setQuotaLimit] = useState<number>(3) // Keep in sync with API
   const [quotaLeft, setQuotaLeft] = useState<number | null>(null)
   const [pinDialogOpen, setPinDialogOpen] = useState(false)
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
-  const categories = ["Text to Image", "Image Upscaler"]
+  const categories = ["Text to Image"]
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -356,64 +349,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     )
   }
 
-  // Helper: upload file to Supabase Storage and return public URL
-  async function uploadToSupabase(file: File): Promise<string> {
-    const fileName = `upscale-${Date.now()}-${file.name}`
-    const { data, error } = await supabase.storage.from("upscaler").upload(fileName, file, { upsert: true, contentType: file.type })
-    if (error) throw new Error(error.message)
-    // Get public URL
-    const { data: urlData } = supabase.storage.from("upscaler").getPublicUrl(fileName)
-    if (!urlData?.publicUrl) throw new Error("Failed to get public URL")
-    return urlData.publicUrl
-  }
-
-  // Handler: submit upscaling job
-  async function handleUpscaleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setUpscaleError("")
-    setUpscaleResult("")
-    if (!upscaleFile) {
-      setUpscaleError("Please select a PNG file.")
-      return
-    }
-    if (upscaleFile.type !== "image/png") {
-      setUpscaleError("Only PNG files are supported.")
-      return
-    }
-    setUpscaleLoading(true)
-    try {
-      // Upload to Supabase
-      const publicUrl = await uploadToSupabase(upscaleFile)
-      setUpscaleUrl(publicUrl)
-      // Call FAL.AI API
-      const falRes = await fetch("https://queue.fal.run/fal-ai/recraft/upscale/crisp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Key ${process.env.NEXT_PUBLIC_FAL_KEY}` },
-        body: JSON.stringify({ image_url: publicUrl, enable_safety_checker: upscaleSafety })
-      })
-      const falData = await falRes.json()
-      if (!falRes.ok || !falData.status_url) throw new Error(falData.error || "Failed to start upscaling job.")
-      // Poll status
-      let status = "IN_QUEUE"
-      let resultUrl = ""
-      while (status !== "COMPLETED") {
-        await new Promise(res => setTimeout(res, 2000))
-        const pollRes = await fetch(falData.status_url)
-        const pollData = await pollRes.json()
-        status = pollData.status
-        if (status === "COMPLETED" && pollData.response_url) {
-          resultUrl = pollData.response_url
-        }
-        if (status === "FAILED") throw new Error("Upscaling failed.")
-      }
-      setUpscaleResult(resultUrl)
-    } catch (err: any) {
-      setUpscaleError(err.message || "Upscaling failed.")
-    } finally {
-      setUpscaleLoading(false)
-    }
-  }
-
   useEffect(() => {
     async function fetchQuota() {
       const { data: { session } } = await supabase.auth.getSession()
@@ -476,6 +411,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <span>Albums</span>
               </Button>
               <Button
+                variant={activeTab === "profile" ? "default" : "ghost"}
+                onClick={() => setActiveTab("profile")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              >
+                <UserCircle className="w-4 h-4" />
+                <span>Profile</span>
+              </Button>
+              <Button
                 variant="outline"
                 onClick={() => setPinDialogOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -509,6 +452,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 >
                   <Folder className="w-4 h-4" />
                   <span>Albums</span>
+                </Button>
+                <Button
+                  variant={activeTab === "profile" ? "default" : "ghost"}
+                  onClick={() => setActiveTab("profile")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
+                  <UserCircle className="w-4 h-4" />
+                  <span>Profile</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -594,35 +545,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         </CardContent>
                       </Card>
                     )
-                  ) : selectedCategories.includes("Image Upscaler") ? (
-                    <Card className="mb-8">
-                      <CardHeader>
-                        <CardTitle>Image Upscaler</CardTitle>
-                        <CardDescription>Upload a PNG image to upscale it using FAL.AI</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <form onSubmit={handleUpscaleSubmit} className="space-y-4">
-                          <div>
-                            <Label>PNG Image</Label>
-                            <Input type="file" accept="image/png" onChange={e => setUpscaleFile(e.target.files?.[0] || null)} />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input type="checkbox" id="upscale-safety" checked={upscaleSafety} onChange={e => setUpscaleSafety(e.target.checked)} />
-                            <Label htmlFor="upscale-safety">Enable Safety Checker</Label>
-                          </div>
-                          <Button type="submit" disabled={upscaleLoading}>{upscaleLoading ? "Upscaling..." : "Upscale Image"}</Button>
-                          {upscaleError && <div className="text-red-500 text-sm">{upscaleError}</div>}
-                        </form>
-                        {upscaleLoading && <div className="mt-4 text-blue-600">Processing...</div>}
-                        {upscaleResult && (
-                          <div className="mt-6">
-                            <Label>Upscaled Image:</Label>
-                            <img src={upscaleResult} alt="Upscaled result" className="mt-2 rounded shadow max-w-full h-auto" />
-                            <a href={upscaleResult} download className="block mt-2 text-blue-600 underline">Download Upscaled Image</a>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
                   ) : selectedCategories.includes("Text to Image") && (
                     <>
                       {/* Generation Form */}
@@ -1403,20 +1325,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             </Button>
           </DialogContent>
         </Dialog>
-
-        {/* Prompt Suggestions Button */}
-        <Button type="button" variant="secondary" className="ml-2" onClick={() => setPromptSuggestionsOpen(true)}>
-          Prompt Suggestions
-        </Button>
-
-        <PromptSuggestions
-          open={promptSuggestionsOpen}
-          onClose={() => setPromptSuggestionsOpen(false)}
-          onAddTags={(tags: string[]) => {
-            setPrompt(prev => prev ? prev.trim() + (prev.trim().endsWith(",") ? " " : ", ") + tags.join(", ") : tags.join(", "))
-            setPromptSuggestionsOpen(false)
-          }}
-        />
 
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent>

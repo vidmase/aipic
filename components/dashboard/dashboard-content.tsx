@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock } from "lucide-react"
+import { ADMIN_EMAILS } from "@/lib/admin-config"
+import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Database } from "@/lib/supabase/types"
@@ -82,6 +83,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [userName, setUserName] = useState<string | null>(null)
   const [isFreeUser, setIsFreeUser] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  
+  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -387,6 +391,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         profile = newProfile;
       }
       setUserName(profile?.full_name || session.user.email || "User");
+      setUserEmail(session.user.email || null);
       const isPremium = !!profile?.is_premium;
       setIsFreeUser(!isPremium);
       if (!isPremium) {
@@ -497,6 +502,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               >
                 <span>Import Image</span>
               </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/admin')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Admin</span>
+                </Button>
+              )}
             </nav>
             {/* Mobile nav */}
             {userMenuOpen && (
@@ -540,6 +555,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 >
                   <span>Import Image</span>
                 </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/admin')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Button>
+                )}
               </nav>
             )}
           </div>

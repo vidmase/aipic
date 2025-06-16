@@ -859,84 +859,98 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
                                 <Label htmlFor="model">Model</Label>
-                                <Select value={model} onValueChange={setModel}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="fal-ai/fast-sdxl">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Zap className="w-4 h-4 text-green-600" />
-                                        <span className="font-semibold">Fast SDXL</span>
-                                        <span className="text-green-700 ml-2">$0.0025/image</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/flux/dev">
-                                      <span className="inline-flex items-center gap-2">
-                                        <ImageIcon className="w-4 h-4 text-yellow-500" />
-                                        <span className="font-semibold">FLUX Dev</span>
-                                        <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/v1.1-ultra">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Rocket className="w-4 h-4 text-pink-600" />
-                                        <span className="font-semibold">FLUX Pro Ultra</span>
-                                        <span className="text-pink-700 ml-2">$0.06/image</span>
-                                        <span className="text-orange-500 ml-1">$0.04/standard</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v2">
-                                      <span className="inline-flex items-center gap-2">
-                                        <PenTool className="w-4 h-4 text-blue-500" />
-                                        <span className="font-semibold">Ideogram v2</span>
-                                        <span className="text-blue-600 ml-2">$0.08/image</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v3">
-                                      <span className="inline-flex items-center gap-2">
-                                        <PenTool className="w-4 h-4 text-blue-700" />
-                                        <span className="font-semibold">Ideogram v3</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/recraft-v3">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Palette className="w-4 h-4 text-purple-700" />
-                                        <span className="font-semibold">Recraft V3</span>
-                                        <span className="text-purple-700 ml-2">$0.04/image</span>
-                                        <span className="text-purple-400 ml-1">$0.08/vector</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/stable-diffusion-v35-large">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Brain className="w-4 h-4 text-indigo-500" />
-                                        <span className="font-semibold">Stable Diffusion 3.5 Large</span>
-                                        <span className="text-indigo-600 ml-2">$0.065/image</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/hidream-i1-fast">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Rocket className="w-4 h-4 text-cyan-600" />
-                                        <span className="font-semibold">HiDream I1 Fast</span>
-                                        <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/kontext/text-to-image">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Brain className="w-4 h-4 text-orange-600" />
-                                        <span className="font-semibold">FLUX Kontext T2I</span>
-                                        <span className="text-orange-700 ml-2">$0.04/image</span>
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="fal-ai/imagen4/preview">
-                                      <span className="inline-flex items-center gap-2">
-                                        <ImageIcon className="w-4 h-4 text-pink-500" />
-                                        <span className="font-semibold">Imagen 4 Preview</span>
-                                        <span className="text-pink-700 ml-2">$0.05/image</span>
-                                      </span>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                {!profileLoading ? (
+                                  <Select value={model} onValueChange={setModel}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="fal-ai/fast-sdxl">
+                                        <span className="inline-flex items-center gap-2">
+                                          <Zap className="w-4 h-4 text-green-600" />
+                                          <span className="font-semibold">Fast SDXL</span>
+                                          <span className="text-green-700 ml-2">$0.0025/image</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/flux/dev">
+                                        <span className="inline-flex items-center gap-2">
+                                          <ImageIcon className="w-4 h-4 text-yellow-500" />
+                                          <span className="font-semibold">FLUX Dev</span>
+                                          <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <Rocket className="w-4 h-4 text-pink-600" />
+                                          <span className="font-semibold">FLUX Pro Ultra</span>
+                                          <span className="text-pink-700 ml-2">$0.06/image</span>
+                                          <span className="text-orange-500 ml-1">$0.04/standard</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/ideogram/v2" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <PenTool className="w-4 h-4 text-blue-500" />
+                                          <span className="font-semibold">Ideogram v2</span>
+                                          <span className="text-blue-600 ml-2">$0.08/image</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/ideogram/v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <PenTool className="w-4 h-4 text-blue-700" />
+                                          <span className="font-semibold">Ideogram v3</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/recraft-v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <Palette className="w-4 h-4 text-purple-700" />
+                                          <span className="font-semibold">Recraft V3</span>
+                                          <span className="text-purple-700 ml-2">$0.04/image</span>
+                                          <span className="text-purple-400 ml-1">$0.08/vector</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <Brain className="w-4 h-4 text-indigo-500" />
+                                          <span className="font-semibold">Stable Diffusion 3.5 Large</span>
+                                          <span className="text-indigo-600 ml-2">$0.065/image</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/hidream-i1-fast" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <Rocket className="w-4 h-4 text-cyan-600" />
+                                          <span className="font-semibold">HiDream I1 Fast</span>
+                                          <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <Brain className="w-4 h-4 text-orange-600" />
+                                          <span className="font-semibold">FLUX Kontext T2I</span>
+                                          <span className="text-orange-700 ml-2">$0.04/image</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="fal-ai/imagen4/preview" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                        <span className="inline-flex items-center gap-2">
+                                          <ImageIcon className="w-4 h-4 text-pink-500" />
+                                          <span className="font-semibold">Imagen 4 Preview</span>
+                                          <span className="text-pink-700 ml-2">$0.05/image</span>
+                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                        </span>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <div className="h-10 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center px-3">
+                                    <span className="text-gray-500 text-sm">Loading models...</span>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="space-y-2">

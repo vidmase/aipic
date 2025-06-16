@@ -24,6 +24,9 @@ interface DashboardContentProps {
   initialImages: GeneratedImage[]
 }
 
+// --- Image Generation Quota Config ---
+const IMAGE_GENERATION_QUOTA_PER_DAY = 3; // Keep in sync with API
+
 export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [prompt, setPrompt] = useState("")
   const [model, setModel] = useState("fal-ai/ideogram/v2")
@@ -78,6 +81,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const categories = ["Text to Image"]
   const [userName, setUserName] = useState<string | null>(null)
   const [isFreeUser, setIsFreeUser] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -351,35 +355,86 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     )
   }
 
+  // Fetch user and quota status together to avoid race condition
   useEffect(() => {
-    async function fetchQuota() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { count } = await supabase
-        .from("generated_images")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", session.user.id)
-        .gte("created_at", since)
-      setQuotaUsed(count ?? 0)
-      setQuotaLeft(quotaLimit - (count ?? 0))
-    }
-    fetchQuota()
-  }, [supabase, quotaLimit])
-
-  useEffect(() => {
-    async function fetchUser() {
+    let channel: any = null;
+    async function fetchUserAndQuota() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data: profile } = await supabase
+      if (!session) {
+        setProfileLoading(false);
+        return;
+      }
+      let { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("full_name, email, is_premium")
+        .select("full_name, is_premium")
         .eq("id", session.user.id)
         .single();
-      setUserName(profile?.full_name || profile?.email || session.user.email || "User");
-      setIsFreeUser(!profile?.is_premium);
+      if (profileError) {
+        // Try to create a profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from("profiles")
+          .insert({
+            id: session.user.id,
+            full_name: session.user.user_metadata?.full_name || session.user.email,
+            is_premium: false
+          })
+          .select()
+          .single();
+        if (createError) {
+          setProfileLoading(false);
+          return;
+        }
+        profile = newProfile;
+      }
+      setUserName(profile?.full_name || session.user.email || "User");
+      const isPremium = !!profile?.is_premium;
+      setIsFreeUser(!isPremium);
+      if (!isPremium) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { count } = await supabase
+          .from("generated_images")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", session.user.id)
+          .gte("created_at", since);
+        setQuotaUsed(count ?? 0);
+        setQuotaLeft(
+          typeof count === "number"
+            ? Math.max(IMAGE_GENERATION_QUOTA_PER_DAY - count, 0)
+            : 0
+        );
+        setQuotaLimit(IMAGE_GENERATION_QUOTA_PER_DAY);
+      } else {
+        setQuotaUsed(null);
+        setQuotaLeft(null);
+        setQuotaLimit(Infinity);
+      }
+      setProfileLoading(false);
     }
-    fetchUser();
+    fetchUserAndQuota();
+    // Supabase Realtime subscription for profile changes
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      supabase.removeAllChannels();
+      channel = supabase
+        .channel('profile-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${session.user.id}`,
+          },
+          () => {
+            fetchUserAndQuota();
+          }
+        )
+        .subscribe();
+    })();
+    return () => {
+      supabase.removeAllChannels();
+    };
   }, []);
 
   return (
@@ -823,69 +878,61 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/flux-pro/v1.1-ultra">
                                       <span className="inline-flex items-center gap-2">
                                         <Rocket className="w-4 h-4 text-pink-600" />
                                         <span className="font-semibold">FLUX Pro Ultra</span>
                                         <span className="text-pink-700 ml-2">$0.06/image</span>
                                         <span className="text-orange-500 ml-1">$0.04/standard</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v2" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/ideogram/v2">
                                       <span className="inline-flex items-center gap-2">
                                         <PenTool className="w-4 h-4 text-blue-500" />
                                         <span className="font-semibold">Ideogram v2</span>
                                         <span className="text-blue-600 ml-2">$0.08/image</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/ideogram/v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/ideogram/v3">
                                       <span className="inline-flex items-center gap-2">
                                         <PenTool className="w-4 h-4 text-blue-700" />
                                         <span className="font-semibold">Ideogram v3</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/recraft-v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/recraft-v3">
                                       <span className="inline-flex items-center gap-2">
                                         <Palette className="w-4 h-4 text-purple-700" />
                                         <span className="font-semibold">Recraft V3</span>
                                         <span className="text-purple-700 ml-2">$0.04/image</span>
                                         <span className="text-purple-400 ml-1">$0.08/vector</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/stable-diffusion-v35-large">
                                       <span className="inline-flex items-center gap-2">
                                         <Brain className="w-4 h-4 text-indigo-500" />
                                         <span className="font-semibold">Stable Diffusion 3.5 Large</span>
                                         <span className="text-indigo-600 ml-2">$0.065/image</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/hidream-i1-fast" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/hidream-i1-fast">
                                       <span className="inline-flex items-center gap-2">
                                         <Rocket className="w-4 h-4 text-cyan-600" />
                                         <span className="font-semibold">HiDream I1 Fast</span>
                                         <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/flux-pro/kontext/text-to-image">
                                       <span className="inline-flex items-center gap-2">
                                         <Brain className="w-4 h-4 text-orange-600" />
                                         <span className="font-semibold">FLUX Kontext T2I</span>
                                         <span className="text-orange-700 ml-2">$0.04/image</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
-                                    <SelectItem value="fal-ai/imagen4/preview" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                    <SelectItem value="fal-ai/imagen4/preview">
                                       <span className="inline-flex items-center gap-2">
                                         <ImageIcon className="w-4 h-4 text-pink-500" />
                                         <span className="font-semibold">Imagen 4 Preview</span>
                                         <span className="text-pink-700 ml-2">$0.05/image</span>
-                                        {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                       </span>
                                     </SelectItem>
                                   </SelectContent>
@@ -1095,11 +1142,22 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <div className="text-2xl font-bold text-green-600">{images.length > 0 ? Math.ceil((Date.now() - new Date(images[images.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}</div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">Days Active</div>
                           </div>
-                          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-yellow-600">{quotaLeft !== null ? quotaLeft : "-"}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">Images Left (24h)</div>
-                            <div className="text-xs text-gray-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : "-"}</div>
-                          </div>
+                          {!profileLoading && (
+                            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                              {isFreeUser ? (
+                                <>
+                                  <div className="text-2xl font-bold text-yellow-600">{quotaLeft !== null && quotaLeft !== undefined ? quotaLeft : 0}</div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">Images Left (24h)</div>
+                                  <div className="text-xs text-gray-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : 0}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-3xl font-extrabold bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent animate-pulse">UNLIMITED</div>
+                                  <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mt-1">Enjoy unlimited generations!</div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-center mt-10 mb-2">

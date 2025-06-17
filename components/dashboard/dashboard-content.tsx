@@ -1394,49 +1394,65 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           </DialogContent>
         </Dialog>
 
-        {/* Full Size Image Dialog */}
-        <Dialog open={!!expandedImage} onOpenChange={open => !open && setExpandedImage(null)}>
-          <DialogContent
-            noOverlay
-            className="fixed inset-0 z-50 flex items-center justify-center p-0 m-0 bg-black/90 border-none shadow-none w-screen h-screen max-w-none rounded-none"
-            onPointerDown={e => {
-              if (e.target === e.currentTarget) setExpandedImage(null)
-            }}
+        {/* Full Size Image Modal */}
+        {expandedImage && (
+          <div 
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setExpandedImage(null)}
+            style={{ backdropFilter: 'blur(8px)' }}
           >
-            <DialogTitle>
-              <span className="sr-only">{expandedImage?.prompt || "Full Size Image"}</span>
-            </DialogTitle>
-            {expandedImage && (
-              <div className="flex items-center justify-center w-full h-full" onPointerDown={e => e.stopPropagation()}>
-                <img
-                  src={expandedImage.image_url || "/placeholder.svg"}
-                  alt={expandedImage.prompt}
-                  className="object-contain w-auto h-auto max-w-[95vw] max-h-[95vh] block pointer-events-auto"
-                />
-                <button
-                  type="button"
-                  className="fixed top-4 right-4 z-20 bg-white/80 dark:bg-gray-900/80 rounded-full p-2 shadow hover:bg-white dark:hover:bg-gray-800 transition border border-gray-200 dark:border-gray-700"
-                  title="Download image"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const response = await fetch(expandedImage.image_url)
-                    const blob = await response.blob()
-                    const url = window.URL.createObjectURL(blob)
-                    const a = document.createElement("a")
-                    a.href = url
-                    a.download = `ai-image-${expandedImage.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "-")}.png`
-                    document.body.appendChild(a)
-                    a.click()
-                    window.URL.revokeObjectURL(url)
-                    document.body.removeChild(a)
-                  }}
-                >
-                  <Download className="w-6 h-6 text-gray-700 dark:text-gray-200" />
-                </button>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+            <div 
+              className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={expandedImage.image_url || "/placeholder.svg"}
+                alt={expandedImage.prompt}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                style={{
+                  maxWidth: '90vw',
+                  maxHeight: '90vh',
+                  width: 'auto',
+                  height: 'auto'
+                }}
+              />
+              
+              {/* Close button */}
+              <button
+                type="button"
+                className="absolute -top-12 -right-12 bg-white/20 hover:bg-white/30 rounded-full p-3 text-white transition-all duration-200"
+                onClick={() => setExpandedImage(null)}
+                title="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* Download button */}
+              <button
+                type="button"
+                className="absolute -top-12 -right-24 bg-white/20 hover:bg-white/30 rounded-full p-3 text-white transition-all duration-200"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const response = await fetch(expandedImage.image_url)
+                  const blob = await response.blob()
+                  const url = window.URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `ai-image-${expandedImage.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "-")}.png`
+                  document.body.appendChild(a)
+                  a.click()
+                  window.URL.revokeObjectURL(url)
+                  document.body.removeChild(a)
+                }}
+                title="Download"
+              >
+                <Download className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Prompt Dialog */}
         <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>

@@ -1151,62 +1151,137 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               )}
 
               {activeTab === "profile" && (
-                <div className="max-w-2xl mx-auto">
-                  <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-                    <CardHeader>
-                      <CardTitle>Profile Settings</CardTitle>
-                      <CardDescription>Manage your account settings</CardDescription>
+                <div className="max-w-4xl mx-auto">
+                  <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+                    <CardHeader className="text-center bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                      <CardTitle className="text-3xl">Profile Settings</CardTitle>
+                      <CardDescription className="text-lg">Manage your account settings</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
+                    <CardContent className="p-8">
+                      <div className="space-y-8">
                         <div className="text-center">
-                          <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <User className="w-10 h-10 text-white" />
+                          <div className="relative group cursor-pointer">
+                            <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-105 transition-transform duration-300">
+                              <User className="w-12 h-12 text-white" />
+                            </div>
+                            <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <span className="text-white text-xs font-medium">Edit Avatar</span>
+                            </div>
                           </div>
-                          <h3 className="text-lg font-semibold">
+                          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                             {userName ? `Welcome, ${userName}` : "Welcome"}
                           </h3>
+                          <p className="text-gray-500 mt-1">Creative AI Artist</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-purple-600">{images.length}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">Images Generated</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                          <div className="group p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-purple-200/50 dark:border-purple-700/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <ImageIcon className="w-8 h-8 text-purple-600 group-hover:scale-110 transition-transform duration-300" />
+                              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                            </div>
+                            <div className="text-3xl font-bold text-purple-600 mb-1 group-hover:scale-105 transition-transform duration-300">{images.length}</div>
+                            <div className="text-sm font-medium text-purple-700 dark:text-purple-300">Images Generated</div>
+                            <div className="text-xs text-purple-500 mt-1">+{images.filter(img => new Date(img.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length} this week</div>
                           </div>
-                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">{new Set(images.map((img) => img.model)).size}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">Models Used</div>
+
+                          <div className="group p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-blue-200/50 dark:border-blue-700/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <Bot className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
+                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            </div>
+                            <div className="text-3xl font-bold text-blue-600 mb-1 group-hover:scale-105 transition-transform duration-300">{new Set(images.map((img) => img.model)).size}</div>
+                            <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Models Used</div>
+                            <div className="text-xs text-blue-500 mt-1">Explore more models</div>
                           </div>
-                          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">{images.length > 0 ? Math.ceil((Date.now() - new Date(images[images.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">Days Active</div>
+
+                          <div className="group p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-green-200/50 dark:border-green-700/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <History className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform duration-300" />
+                              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            </div>
+                            <div className="text-3xl font-bold text-green-600 mb-1 group-hover:scale-105 transition-transform duration-300">{images.length > 0 ? Math.ceil((Date.now() - new Date(images[images.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}</div>
+                            <div className="text-sm font-medium text-green-700 dark:text-green-300">Days Active</div>
+                            <div className="text-xs text-green-500 mt-1">Keep creating!</div>
                           </div>
+
                           {!profileLoading && (
-                            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                            <div className="group p-6 bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 dark:from-yellow-900/20 dark:via-orange-900/20 dark:to-pink-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-yellow-200/50 dark:border-yellow-700/50 min-w-0">
                               {isFreeUser ? (
                                 <>
-                                  <div className="text-2xl font-bold text-yellow-600">{quotaLeft !== null && quotaLeft !== undefined ? quotaLeft : 0}</div>
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">Images Left (24h)</div>
-                                  <div className="text-xs text-gray-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : 0}</div>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <Zap className="w-8 h-8 text-yellow-600 group-hover:scale-110 transition-transform duration-300" />
+                                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                                  </div>
+                                  <div className="text-3xl font-bold text-yellow-600 mb-1 group-hover:scale-105 transition-transform duration-300">{quotaLeft !== null && quotaLeft !== undefined ? quotaLeft : 0}</div>
+                                  <div className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Images Left (24h)</div>
+                                  <div className="text-xs text-yellow-500 mt-1">Daily Quota: {quotaLimit}, Used: {quotaUsed !== null ? quotaUsed : 0}</div>
                                 </>
                               ) : (
                                 <>
-                                  <div className="text-3xl font-extrabold bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent animate-pulse">UNLIMITED</div>
-                                  <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mt-1">Enjoy unlimited generations!</div>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <Rocket className="w-8 h-8 text-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text group-hover:scale-110 transition-transform duration-300" />
+                                    <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-pulse"></div>
+                                  </div>
+                                  <div className="text-2xl font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent mb-1 group-hover:scale-105 transition-transform duration-300 leading-tight">
+                                    UNLIMITED
+                                  </div>
+                                  <div className="text-sm font-bold bg-gradient-to-r from-yellow-700 via-pink-600 to-purple-700 bg-clip-text text-transparent">
+                                    Enjoy unlimited generations!
+                                  </div>
+                                  <div className="text-xs text-yellow-600 mt-1">Premium member ✨</div>
                                 </>
                               )}
                             </div>
                           )}
                         </div>
+
+                        {/* Quick Actions */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                          <Button
+                            variant="outline"
+                            className="h-16 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 transition-all duration-300"
+                            onClick={() => setActiveTab("generate")}
+                          >
+                            <Plus className="w-5 h-5 text-purple-600" />
+                            <span className="text-sm">Create Image</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-16 flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300"
+                            onClick={() => setActiveTab("history")}
+                          >
+                            <History className="w-5 h-5 text-blue-600" />
+                            <span className="text-sm">View Gallery</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-16 flex flex-col gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-300"
+                            onClick={() => setActiveTab("albums")}
+                          >
+                            <Folder className="w-5 h-5 text-green-600" />
+                            <span className="text-sm">Albums</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-16 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 transition-all duration-300"
+                            onClick={() => setPinDialogOpen(true)}
+                          >
+                            <Download className="w-5 h-5 text-orange-600" />
+                            <span className="text-sm">Import</span>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex justify-center mt-10 mb-2">
+
+                      <div className="flex justify-center mt-12 mb-4">
                         <Button
                           onClick={handleSignOut}
-                          className="flex items-center justify-center gap-3 px-12 py-4 rounded-full text-lg font-bold bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg border-2 border-red-500 hover:from-red-700 hover:to-pink-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-red-300 w-full sm:w-auto"
-                          style={{ minWidth: 220 }}
+                          className="group flex items-center justify-center gap-4 px-16 py-6 rounded-full text-xl font-bold bg-gradient-to-r from-red-600 via-pink-600 to-red-700 text-white shadow-xl border-2 border-red-500 hover:from-red-700 hover:via-pink-700 hover:to-red-800 hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-red-300 w-full sm:w-auto relative overflow-hidden"
+                          style={{ minWidth: 280 }}
                         >
-                          <LogOut className="w-7 h-7" />
-                          <span className="tracking-wide">Log Out</span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <LogOut className="w-8 h-8 group-hover:rotate-12 transition-transform duration-300" />
+                          <span className="tracking-wide relative z-10">Log Out</span>
                         </Button>
                       </div>
                     </CardContent>

@@ -92,13 +92,22 @@ interface UsageData {
   image_models: { model_id: string; display_name: string }
 }
 
-export function AccessControlPanel() {
-  const [tiers, setTiers] = useState<UserTier[]>([])
-  const [models, setModels] = useState<ImageModel[]>([])
-  const [tierAccess, setTierAccess] = useState<TierAccess[]>([])
-  const [quotas, setQuotas] = useState<QuotaLimit[]>([])
+interface AccessControlPanelProps {
+  initialData: {
+    tiers: any[]
+    models: any[]
+    access: any[]
+    quotas: any[]
+  }
+}
+
+export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
+  const [tiers, setTiers] = useState<UserTier[]>(initialData.tiers || [])
+  const [models, setModels] = useState<ImageModel[]>(initialData.models || [])
+  const [tierAccess, setTierAccess] = useState<TierAccess[]>(initialData.access || [])
+  const [quotas, setQuotas] = useState<QuotaLimit[]>(initialData.quotas || [])
   const [usage, setUsage] = useState<UsageData[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   
   // Form states
@@ -109,38 +118,49 @@ export function AccessControlPanel() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadData()
+    loadUsageData()
   }, [])
+
+  const loadUsageData = async () => {
+    try {
+      const usageRes = await fetch('/api/admin/access-control?type=usage')
+      if (usageRes.ok) {
+        const usageData = await usageRes.json()
+        setUsage(usageData.usage || [])
+      }
+    } catch (error) {
+      console.error('Error loading usage data:', error)
+    }
+  }
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [tiersRes, modelsRes, accessRes, quotasRes, usageRes] = await Promise.all([
+      const [tiersRes, modelsRes, accessRes, quotasRes] = await Promise.all([
         fetch('/api/admin/access-control?type=tiers'),
         fetch('/api/admin/access-control?type=models'),
         fetch('/api/admin/access-control?type=access'),
-        fetch('/api/admin/access-control?type=quotas'),
-        fetch('/api/admin/access-control?type=usage')
+        fetch('/api/admin/access-control?type=quotas')
       ])
 
-      const [tiersData, modelsData, accessData, quotasData, usageData] = await Promise.all([
-        tiersRes.json(),
-        modelsRes.json(),
-        accessRes.json(),
-        quotasRes.json(),
-        usageRes.json()
-      ])
+      if (tiersRes.ok && modelsRes.ok && accessRes.ok && quotasRes.ok) {
+        const [tiersData, modelsData, accessData, quotasData] = await Promise.all([
+          tiersRes.json(),
+          modelsRes.json(),
+          accessRes.json(),
+          quotasRes.json()
+        ])
 
-      setTiers(tiersData.tiers || [])
-      setModels(modelsData.models || [])
-      setTierAccess(accessData.access || [])
-      setQuotas(quotasData.quotas || [])
-      setUsage(usageData.usage || [])
+        setTiers(tiersData.tiers || [])
+        setModels(modelsData.models || [])
+        setTierAccess(accessData.access || [])
+        setQuotas(quotasData.quotas || [])
+      }
     } catch (error) {
       console.error('Error loading data:', error)
       toast({
         title: "Error",
-        description: "Failed to load admin data",
+        description: "Failed to refresh admin data",
         variant: "destructive",
       })
     } finally {

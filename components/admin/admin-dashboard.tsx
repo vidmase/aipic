@@ -43,19 +43,29 @@ import { AccessControlPanel } from "./access-control-panel"
 interface User {
   id: string
   full_name: string | null
+  email: string | null
   is_premium: boolean
+  user_tier: string | null
   created_at: string
   updated_at: string
   totalImages: number
   recentImages: number
 }
 
+interface AdminData {
+  tiers: any[]
+  models: any[]
+  access: any[]
+  quotas: any[]
+}
+
 interface AdminDashboardProps {
   users: User[]
   currentAdminEmail: string
+  adminData: AdminData
 }
 
-export function AdminDashboard({ users: initialUsers, currentAdminEmail }: AdminDashboardProps) {
+export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminData }: AdminDashboardProps) {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState<string | null>(null)
@@ -225,112 +235,209 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail }: Admin
           </Card>
         </div>
 
-        {/* Search and User Management */}
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              User Management
-            </CardTitle>
-            <CardDescription>
-              Manage user premium status and view user statistics
-            </CardDescription>
-            
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search users by name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            <div className="space-y-4">
-              {filteredUsers.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No users found matching your search.
+        {/* Admin Tabs Interface */}
+        <Tabs defaultValue="users" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">User Management</span>
+              <span className="sm:hidden">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="access" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Model Access</span>
+              <span className="sm:hidden">Access</span>
+            </TabsTrigger>
+            <TabsTrigger value="quotas" className="flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Quota Management</span>
+              <span className="sm:hidden">Quotas</span>
+            </TabsTrigger>
+            <TabsTrigger value="tiers" className="flex items-center gap-2">
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">User Tiers</span>
+              <span className="sm:hidden">Tiers</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Usage Analytics</span>
+              <span className="sm:hidden">Analytics</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* User Management Tab */}
+          <TabsContent value="users">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  User Management
+                </CardTitle>
+                <CardDescription>
+                  Manage user premium status and view user statistics
+                </CardDescription>
+                
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search users by name or ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              ) : (
-                filteredUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {user.full_name || "Unknown User"}
-                        </h3>
-                        <Badge
+              </CardHeader>
+              
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredUsers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      No users found matching your search.
+                    </div>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {user.full_name || "Unknown User"}
+                            </h3>
+                                                    <Badge
                           variant={user.is_premium ? "default" : "secondary"}
                           className={user.is_premium ? "bg-gradient-to-r from-yellow-400 to-orange-500 text-white shrink-0" : "shrink-0"}
                         >
-                          {user.is_premium ? (
+                          {user.user_tier ? (
                             <div className="flex items-center gap-1">
-                              <Crown className="w-3 h-3" />
-                              <span className="hidden sm:inline">Premium</span>
-                              <span className="sm:hidden">Pro</span>
+                              {user.user_tier === 'admin' && <Shield className="w-3 h-3" />}
+                              {user.user_tier === 'premium' && <Crown className="w-3 h-3" />}
+                              <span className="hidden sm:inline capitalize">{user.user_tier}</span>
+                              <span className="sm:hidden capitalize">{user.user_tier}</span>
                             </div>
                           ) : (
                             "Free"
                           )}
                         </Badge>
-                      </div>
-                      
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                        <div className="truncate">ID: {user.id}</div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                          <span className="flex items-center gap-1">
-                            <ImageIcon className="w-3 h-3" />
-                            <span className="text-xs">{user.totalImages} total</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" />
-                            <span className="text-xs">{user.recentImages} in 24h</span>
-                          </span>
-                          <span className="hidden sm:flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            <span className="text-xs">Joined {new Date(user.created_at).toLocaleDateString()}</span>
-                          </span>
+                          </div>
+                          
+                          <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                            <div className="truncate">ID: {user.id}</div>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                              <span className="flex items-center gap-1">
+                                <ImageIcon className="w-3 h-3" />
+                                <span className="text-xs">{user.totalImages} total</span>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                <span className="text-xs">{user.recentImages} in 24h</span>
+                              </span>
+                              <span className="hidden sm:flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                <span className="text-xs">Joined {new Date(user.created_at).toLocaleDateString()}</span>
+                              </span>
+                            </div>
+                            <div className="sm:hidden flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span className="text-xs">Joined {new Date(user.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="sm:hidden flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-xs">Joined {new Date(user.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          disabled={loading === user.id}
-                          className="shrink-0 self-start sm:self-center"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleTogglePremium(user)}
-                          className="flex items-center gap-2"
-                        >
-                          <Crown className="w-4 h-4" />
-                          {user.is_premium ? "Remove Premium" : "Grant Premium"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              disabled={loading === user.id}
+                              className="shrink-0 self-start sm:self-center"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleTogglePremium(user)}
+                              className="flex items-center gap-2"
+                            >
+                              <Crown className="w-4 h-4" />
+                              {user.is_premium ? "Remove Premium" : "Grant Premium"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Access Control Tab */}
+          <TabsContent value="access">
+            <AccessControlPanel initialData={adminData} />
+          </TabsContent>
+
+          {/* Other tabs will be implemented in the AccessControlPanel */}
+          <TabsContent value="quotas">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Quota Management
+                </CardTitle>
+                <CardDescription>
+                  Configure generation limits for different user tiers and models
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  Quota management interface will be displayed here. This is handled by the Access Control Panel.
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="tiers">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="w-5 h-5" />
+                  User Tiers
+                </CardTitle>
+                <CardDescription>
+                  Manage user tier definitions and permissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  User tier management interface will be displayed here. This is handled by the Access Control Panel.
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Usage Analytics
+                </CardTitle>
+                <CardDescription>
+                  View detailed usage statistics and trends
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  Analytics dashboard will be displayed here. This is handled by the Access Control Panel.
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Confirmation Dialog */}
         <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => 

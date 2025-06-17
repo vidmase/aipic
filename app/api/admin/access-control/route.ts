@@ -124,8 +124,9 @@ export async function POST(request: NextRequest) {
         
         if (quotaError) throw quotaError
         return NextResponse.json({ success: true, message: "Quota updated successfully" })
+      }
 
-      case 'create_tier':
+      case 'create_tier': {
         const { name, display_name, description } = data
         const { error: tierError } = await supabase
           .from('user_tiers')
@@ -138,8 +139,9 @@ export async function POST(request: NextRequest) {
         
         if (tierError) throw tierError
         return NextResponse.json({ success: true, message: "Tier created successfully" })
+      }
 
-      case 'create_model':
+      case 'create_model': {
         const { model_id, display_name: model_display_name, description: model_description, provider } = data
         const { error: modelError } = await supabase
           .from('image_models')
@@ -153,8 +155,9 @@ export async function POST(request: NextRequest) {
         
         if (modelError) throw modelError
         return NextResponse.json({ success: true, message: "Model created successfully" })
+      }
 
-      case 'update_user_tier':
+      case 'update_user_tier': {
         const { user_id, new_tier } = data
         const { error: userError } = await supabase
           .from('profiles')
@@ -167,6 +170,7 @@ export async function POST(request: NextRequest) {
         
         if (userError) throw userError
         return NextResponse.json({ success: true, message: "User tier updated successfully" })
+      }
 
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 })

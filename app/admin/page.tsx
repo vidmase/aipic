@@ -23,7 +23,9 @@ export default async function AdminPage() {
     .select(`
       id,
       full_name,
+      email,
       is_premium,
+      user_tier,
       created_at,
       updated_at
     `)
@@ -58,10 +60,34 @@ export default async function AdminPage() {
     recentImages: recentImageCountsByUser[user.id] || 0,
   })) || []
 
+  // Load admin system data
+  const [tiersResult, modelsResult, accessResult, quotasResult] = await Promise.all([
+    supabase.from('user_tiers').select('*').order('name'),
+    supabase.from('image_models').select('*').order('display_name'),
+    supabase.from('tier_model_access').select(`
+      *,
+      user_tiers(name, display_name),
+      image_models(model_id, display_name)
+    `),
+    supabase.from('quota_limits').select(`
+      *,
+      user_tiers(name, display_name),
+      image_models(model_id, display_name)
+    `)
+  ])
+
+  const adminData = {
+    tiers: tiersResult.data || [],
+    models: modelsResult.data || [],
+    access: accessResult.data || [],
+    quotas: quotasResult.data || []
+  }
+
   return (
     <AdminDashboard 
       users={usersWithStats}
       currentAdminEmail={user.email || ""}
+      adminData={adminData}
     />
   )
 } 

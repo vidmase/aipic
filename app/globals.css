@@ -92,3 +92,16 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes aurora-text {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-aurora-text {
+  animation: aurora-text 6s ease-in-out infinite;
+}

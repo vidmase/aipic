@@ -1,0 +1,698 @@
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { 
+  Settings, 
+  Users, 
+  Bot, 
+  Shield, 
+  Plus, 
+  Edit, 
+  Save,
+  Loader2,
+  Eye,
+  BarChart3,
+  Clock,
+  Calendar,
+  Zap
+} from "lucide-react"
+
+interface UserTier {
+  id: string
+  name: string
+  display_name: string
+  description: string
+  is_active: boolean
+}
+
+interface ImageModel {
+  id: string
+  model_id: string
+  display_name: string
+  description: string
+  provider: string
+  is_active: boolean
+}
+
+interface TierAccess {
+  id: string
+  tier_id: string
+  model_id: string
+  is_enabled: boolean
+  user_tiers: { name: string; display_name: string }
+  image_models: { model_id: string; display_name: string }
+}
+
+interface QuotaLimit {
+  id: string
+  tier_id: string
+  model_id: string
+  daily_limit: number
+  monthly_limit: number
+  hourly_limit: number
+  user_tiers: { name: string; display_name: string }
+  image_models: { model_id: string; display_name: string }
+}
+
+interface UsageData {
+  id: string
+  user_id: string
+  model_id: string
+  images_generated: number
+  date: string
+  hour: number
+  profiles: { full_name: string; email: string }
+  image_models: { model_id: string; display_name: string }
+}
+
+export function AccessControlPanel() {
+  const [tiers, setTiers] = useState<UserTier[]>([])
+  const [models, setModels] = useState<ImageModel[]>([])
+  const [tierAccess, setTierAccess] = useState<TierAccess[]>([])
+  const [quotas, setQuotas] = useState<QuotaLimit[]>([])
+  const [usage, setUsage] = useState<UsageData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  
+  // Form states
+  const [newTier, setNewTier] = useState({ name: '', display_name: '', description: '' })
+  const [newModel, setNewModel] = useState({ model_id: '', display_name: '', description: '', provider: 'fal-ai' })
+  const [selectedQuota, setSelectedQuota] = useState<QuotaLimit | null>(null)
+  
+  const { toast } = useToast()
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [tiersRes, modelsRes, accessRes, quotasRes, usageRes] = await Promise.all([
+        fetch('/api/admin/access-control?type=tiers'),
+        fetch('/api/admin/access-control?type=models'),
+        fetch('/api/admin/access-control?type=access'),
+        fetch('/api/admin/access-control?type=quotas'),
+        fetch('/api/admin/access-control?type=usage')
+      ])
+
+      const [tiersData, modelsData, accessData, quotasData, usageData] = await Promise.all([
+        tiersRes.json(),
+        modelsRes.json(),
+        accessRes.json(),
+        quotasRes.json(),
+        usageRes.json()
+      ])
+
+      setTiers(tiersData.tiers || [])
+      setModels(modelsData.models || [])
+      setTierAccess(accessData.access || [])
+      setQuotas(quotasData.quotas || [])
+      setUsage(usageData.usage || [])
+    } catch (error) {
+      console.error('Error loading data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load admin data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAccessToggle = async (accessId: string, currentEnabled: boolean) => {
+    setSaving(true)
+    try {
+      const accessItem = tierAccess.find(a => a.id === accessId)
+      if (!accessItem) return
+
+      const response = await fetch('/api/admin/access-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_tier_access',
+          data: {
+            tier_id: accessItem.tier_id,
+            model_id: accessItem.model_id,
+            is_enabled: !currentEnabled
+          }
+        })
+      })
+
+      if (response.ok) {
+        setTierAccess(prev => 
+          prev.map(item => 
+            item.id === accessId 
+              ? { ...item, is_enabled: !currentEnabled }
+              : item
+          )
+        )
+        toast({
+          title: "Success",
+          description: "Access permissions updated",
+        })
+      } else {
+        throw new Error('Failed to update access')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update access permissions",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleQuotaUpdate = async (quotaData: Partial<QuotaLimit>) => {
+    setSaving(true)
+    try {
+      const response = await fetch('/api/admin/access-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_quota',
+          data: quotaData
+        })
+      })
+
+      if (response.ok) {
+        await loadData()
+        setSelectedQuota(null)
+        toast({
+          title: "Success",
+          description: "Quota limits updated",
+        })
+      } else {
+        throw new Error('Failed to update quota')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update quota limits",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCreateTier = async () => {
+    if (!newTier.name || !newTier.display_name) return
+
+    setSaving(true)
+    try {
+      const response = await fetch('/api/admin/access-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_tier',
+          data: newTier
+        })
+      })
+
+      if (response.ok) {
+        await loadData()
+        setNewTier({ name: '', display_name: '', description: '' })
+        toast({
+          title: "Success",
+          description: "User tier created",
+        })
+      } else {
+        throw new Error('Failed to create tier')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create user tier",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCreateModel = async () => {
+    if (!newModel.model_id || !newModel.display_name) return
+
+    setSaving(true)
+    try {
+      const response = await fetch('/api/admin/access-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_model',
+          data: newModel
+        })
+      })
+
+      if (response.ok) {
+        await loadData()
+        setNewModel({ model_id: '', display_name: '', description: '', provider: 'fal-ai' })
+        toast({
+          title: "Success",
+          description: "Image model created",
+        })
+      } else {
+        throw new Error('Failed to create model')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create image model",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading admin data...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Access Control & Quotas</h2>
+          <p className="text-muted-foreground">
+            Manage user tiers, model access, and generation limits
+          </p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="access" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="access">Model Access</TabsTrigger>
+          <TabsTrigger value="quotas">Quota Limits</TabsTrigger>
+          <TabsTrigger value="tiers">User Tiers</TabsTrigger>
+          <TabsTrigger value="models">AI Models</TabsTrigger>
+          <TabsTrigger value="usage">Usage Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="access" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Model Access Control
+              </CardTitle>
+              <CardDescription>
+                Control which AI models each user tier can access
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User Tier</TableHead>
+                    <TableHead>AI Model</TableHead>
+                    <TableHead>Access Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tierAccess.map((access) => (
+                    <TableRow key={access.id}>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {access.user_tiers.display_name}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{access.image_models.display_name}</TableCell>
+                      <TableCell>
+                        <Badge variant={access.is_enabled ? "default" : "secondary"}>
+                          {access.is_enabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={access.is_enabled}
+                          onCheckedChange={() => handleAccessToggle(access.id, access.is_enabled)}
+                          disabled={saving}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="quotas" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Quota Management
+              </CardTitle>
+              <CardDescription>
+                Set generation limits for each user tier and model combination
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User Tier</TableHead>
+                    <TableHead>AI Model</TableHead>
+                    <TableHead>Hourly Limit</TableHead>
+                    <TableHead>Daily Limit</TableHead>
+                    <TableHead>Monthly Limit</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quotas.map((quota) => (
+                    <TableRow key={quota.id}>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {quota.user_tiers.display_name}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{quota.image_models.display_name}</TableCell>
+                      <TableCell>{quota.hourly_limit}</TableCell>
+                      <TableCell>{quota.daily_limit}</TableCell>
+                      <TableCell>{quota.monthly_limit}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedQuota(quota)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tiers" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  User Tiers
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {tiers.map((tier) => (
+                  <div key={tier.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{tier.display_name}</h4>
+                        <p className="text-sm text-muted-foreground">{tier.description}</p>
+                      </div>
+                      <Badge variant={tier.is_active ? "default" : "secondary"}>
+                        {tier.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Create New Tier
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tier-name">Tier Name</Label>
+                  <Input
+                    id="tier-name"
+                    value={newTier.name}
+                    onChange={(e) => setNewTier({...newTier, name: e.target.value})}
+                    placeholder="e.g., pro, enterprise"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tier-display">Display Name</Label>
+                  <Input
+                    id="tier-display"
+                    value={newTier.display_name}
+                    onChange={(e) => setNewTier({...newTier, display_name: e.target.value})}
+                    placeholder="e.g., Pro, Enterprise"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tier-description">Description</Label>
+                  <Textarea
+                    id="tier-description"
+                    value={newTier.description}
+                    onChange={(e) => setNewTier({...newTier, description: e.target.value})}
+                    placeholder="Describe this tier..."
+                  />
+                </div>
+                <Button onClick={handleCreateTier} disabled={saving}>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Create Tier
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="models" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5" />
+                  AI Models
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {models.map((model) => (
+                  <div key={model.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{model.display_name}</h4>
+                        <p className="text-sm text-muted-foreground">{model.model_id}</p>
+                        <p className="text-xs text-muted-foreground">{model.description}</p>
+                      </div>
+                      <Badge variant={model.is_active ? "default" : "secondary"}>
+                        {model.provider}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Add New Model
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="model-id">Model ID</Label>
+                  <Input
+                    id="model-id"
+                    value={newModel.model_id}
+                    onChange={(e) => setNewModel({...newModel, model_id: e.target.value})}
+                    placeholder="e.g., fal-ai/flux/pro"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model-display">Display Name</Label>
+                  <Input
+                    id="model-display"
+                    value={newModel.display_name}
+                    onChange={(e) => setNewModel({...newModel, display_name: e.target.value})}
+                    placeholder="e.g., Flux Pro"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model-provider">Provider</Label>
+                  <Select
+                    value={newModel.provider}
+                    onValueChange={(value) => setNewModel({...newModel, provider: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fal-ai">Fal AI</SelectItem>
+                      <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="replicate">Replicate</SelectItem>
+                      <SelectItem value="stability">Stability AI</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model-description">Description</Label>
+                  <Textarea
+                    id="model-description"
+                    value={newModel.description}
+                    onChange={(e) => setNewModel({...newModel, description: e.target.value})}
+                    placeholder="Describe this model..."
+                  />
+                </div>
+                <Button onClick={handleCreateModel} disabled={saving}>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add Model
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="usage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Usage Analytics
+              </CardTitle>
+              <CardDescription>
+                Monitor real-time usage across all users and models
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Images Generated</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Hour</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {usage.slice(0, 50).map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{item.profiles.full_name || 'Unknown'}</div>
+                          <div className="text-sm text-muted-foreground">{item.profiles.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.image_models.display_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{item.images_generated}</Badge>
+                      </TableCell>
+                      <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{item.hour}:00</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Quota Edit Dialog */}
+      <Dialog open={!!selectedQuota} onOpenChange={() => setSelectedQuota(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Quota Limits</DialogTitle>
+            <DialogDescription>
+              Update generation limits for this tier and model combination
+            </DialogDescription>
+          </DialogHeader>
+          {selectedQuota && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="hourly">Hourly Limit</Label>
+                  <Input
+                    id="hourly"
+                    type="number"
+                    value={selectedQuota.hourly_limit}
+                    onChange={(e) => setSelectedQuota({
+                      ...selectedQuota,
+                      hourly_limit: parseInt(e.target.value)
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="daily">Daily Limit</Label>
+                  <Input
+                    id="daily"
+                    type="number"
+                    value={selectedQuota.daily_limit}
+                    onChange={(e) => setSelectedQuota({
+                      ...selectedQuota,
+                      daily_limit: parseInt(e.target.value)
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="monthly">Monthly Limit</Label>
+                  <Input
+                    id="monthly"
+                    type="number"
+                    value={selectedQuota.monthly_limit}
+                    onChange={(e) => setSelectedQuota({
+                      ...selectedQuota,
+                      monthly_limit: parseInt(e.target.value)
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedQuota(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => selectedQuota && handleQuotaUpdate(selectedQuota)} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+} 

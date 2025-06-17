@@ -17,7 +17,9 @@ import {
   Shield,
   TrendingUp,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  Zap
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -35,6 +37,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AccessControlPanel } from "./access-control-panel"
 
 interface User {
   id: string

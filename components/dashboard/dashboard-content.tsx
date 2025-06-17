@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
 import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield } from "lucide-react"
+import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Database } from "@/lib/supabase/types"
@@ -450,12 +451,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           <div className="container mx-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
             {/* Logo */}
             <div className="flex items-center space-x-3 w-full sm:w-auto justify-between">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shadow">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-extrabold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent tracking-tight select-none">
-                AI Image Studio
-              </span>
+              <button 
+                onClick={() => setActiveTab("generate")}
+                className="flex items-center space-x-3 group cursor-pointer hover:scale-105 transition-transform duration-200"
+                title="Generate AI Image"
+              >
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shadow group-hover:shadow-lg transition-shadow duration-200">
+                  <Sparkles className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-200" />
+                </div>
+                <AuroraText className="text-2xl group-hover:scale-105 transition-transform duration-200">
+                  AI Image Studio
+                </AuroraText>
+              </button>
               {/* Hamburger for mobile */}
               <button className="sm:hidden ml-auto" onClick={() => setUserMenuOpen((open) => !open)}>
                 <Menu className="w-7 h-7 text-purple-600" />

@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createServerClient, createServiceRoleClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
@@ -23,7 +23,6 @@ export default async function AdminPage() {
     .select(`
       id,
       full_name,
-      email,
       is_premium,
       user_tier,
       created_at,
@@ -60,21 +59,24 @@ export default async function AdminPage() {
     recentImages: recentImageCountsByUser[user.id] || 0,
   })) || []
 
-  // Load admin system data
+  // Load admin system data using service role client
+  const adminSupabase = createServiceRoleClient()
   const [tiersResult, modelsResult, accessResult, quotasResult] = await Promise.all([
-    supabase.from('user_tiers').select('*').order('name'),
-    supabase.from('image_models').select('*').order('display_name'),
-    supabase.from('tier_model_access').select(`
+    adminSupabase.from('user_tiers').select('*').order('name'),
+    adminSupabase.from('image_models').select('*').order('display_name'),
+    adminSupabase.from('tier_model_access').select(`
       *,
       user_tiers(name, display_name),
       image_models(model_id, display_name)
     `),
-    supabase.from('quota_limits').select(`
+    adminSupabase.from('quota_limits').select(`
       *,
       user_tiers(name, display_name),
       image_models(model_id, display_name)
     `)
   ])
+
+
 
   const adminData = {
     tiers: tiersResult.data || [],

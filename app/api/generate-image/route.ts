@@ -26,18 +26,18 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
 
     // Check authentication
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = await request.json()
 
     // Check model access
-    const hasModelAccess = await quotaManager.checkModelAccess(session.user.id, model)
+    const hasModelAccess = await quotaManager.checkModelAccess(user.id, model)
     if (!hasModelAccess) {
       return NextResponse.json({
         error: "You don't have access to this model. Please upgrade your plan or contact support."
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check quota limits
-    const quotaCheck = await quotaManager.checkQuota(session.user.id, model)
+    const quotaCheck = await quotaManager.checkQuota(user.id, model)
     if (!quotaCheck.allowed) {
       return NextResponse.json({
         error: `Generation limit reached: ${quotaCheck.reason}`,
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     const { data: existingAlbum } = await supabase
       .from("albums")
       .select("id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .ilike("name", albumName)
       .maybeSingle()
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       // Create a new album
       const { data: newAlbum, error: albumError } = await supabase
         .from("albums")
-        .insert({ user_id: session.user.id, name: albumName, cover_image_url: result.images[0].url })
+        .insert({ user_id: user.id, name: albumName, cover_image_url: result.images[0].url })
         .select()
         .single()
       if (albumError) {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       const { data: savedImage, error: dbError } = await supabase
         .from("generated_images")
         .insert({
-          user_id: session.user.id,
+          user_id: user.id,
           prompt,
           model,
           image_url: img.url,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Track usage for quota management
-    await quotaManager.trackUsage(session.user.id, model, result.images.length)
+    await quotaManager.trackUsage(user.id, model, result.images.length)
 
     return NextResponse.json({ 
       images: savedImages,

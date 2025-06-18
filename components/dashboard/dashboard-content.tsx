@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield } from "lucide-react"
+import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw } from "lucide-react"
+import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -85,6 +86,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [isFreeUser, setIsFreeUser] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userAccessibleModels, setUserAccessibleModels] = useState<string[]>([])
+  const [refreshingPermissions, setRefreshingPermissions] = useState(false)
+  
+  // Quota limit dialog state
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [quotaDialogData, setQuotaDialogData] = useState<{
+    title: string
+    message: string
+    quotaInfo?: { used: number; limit: number; period: "hourly" | "daily" | "monthly" }
+  }>({ title: "", message: "" })
   
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail)
 
@@ -97,6 +108,32 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const generateImage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!prompt.trim()) return
+
+    // Refresh accessible models before generating to ensure latest permissions
+    if (isFreeUser) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_tier")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile?.user_tier) {
+          await fetchUserAccessibleModels(profile.user_tier);
+          
+          // Check if the selected model is still accessible after refresh
+          if (!isModelAccessible(model)) {
+            toast({
+              title: "Access Denied",
+              description: "You no longer have access to this model. Please select a different model.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+    }
 
     setLoading(true)
     try {
@@ -145,11 +182,19 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
       setPrompt("")
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate image",
-        variant: "destructive",
-      })
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate image"
+      
+      // Check if it's a quota limit error and show custom dialog
+      if (errorMessage.includes("Generation limit reached")) {
+        handleQuotaLimitError(errorMessage)
+      } else {
+        // Show regular toast for other errors
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -209,16 +254,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     setLoading(true)
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
         toast({ title: "Error", description: "Not authenticated", variant: "destructive" })
         return
       }
       const { data, error } = await supabase
         .from("generated_images")
         .select("*")
-        .eq("user_id", session.user.id)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(12)
       if (error) throw error
@@ -250,16 +295,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     setImportLoading(true)
     try {
       const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
         toast({ title: "Error", description: "Not authenticated", variant: "destructive" })
         return
       }
       const { error } = await supabase
         .from("generated_images")
         .insert({
-          user_id: session.user.id,
+          user_id: user.id,
           prompt: importPrompt || "Imported from FAL.AI",
           model: "imported",
           image_url: importUrl,
@@ -360,6 +405,114 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     )
   }
 
+  // Fetch user accessible models based on their tier
+  const fetchUserAccessibleModels = async (userTier: string, showLoading: boolean = false) => {
+    try {
+      if (showLoading) setRefreshingPermissions(true)
+      
+      console.log(`🔍 Fetching accessible models for tier: ${userTier}`)
+      
+      const { data: accessibleModels, error } = await supabase
+        .from('tier_model_access')
+        .select(`
+          is_enabled,
+          image_models!inner(model_id),
+          user_tiers!inner(name)
+        `)
+        .eq('user_tiers.name', userTier)
+        .eq('is_enabled', true)
+      
+      if (error) {
+        console.error('❌ Error fetching accessible models:', error)
+        setUserAccessibleModels([])
+        return
+      }
+      
+      console.log('📊 Raw accessible models data:', accessibleModels)
+      
+      const modelIds = accessibleModels?.map(access => access.image_models.model_id) || []
+      console.log(`✅ Accessible model IDs for ${userTier}:`, modelIds)
+      setUserAccessibleModels(modelIds)
+      
+      if (showLoading) {
+        toast({
+          title: "Permissions Updated",
+          description: `Loaded ${modelIds.length} accessible models`,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching accessible models:', error)
+      setUserAccessibleModels([])
+      if (showLoading) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh model permissions",
+          variant: "destructive",
+        })
+      }
+    } finally {
+      if (showLoading) setRefreshingPermissions(false)
+    }
+  }
+
+  // Manual refresh function for permissions
+  const refreshModelPermissions = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (profile?.user_tier) {
+        await fetchUserAccessibleModels(profile.user_tier, true);
+      }
+    }
+  }
+
+  // Check if a model is accessible to the current user
+  const isModelAccessible = (modelId: string) => {
+    const isAccessible = userAccessibleModels.includes(modelId) || !isFreeUser
+    console.log(`🔐 Model ${modelId} accessibility check:`, {
+      isFreeUser,
+      isInAccessibleList: userAccessibleModels.includes(modelId),
+      userAccessibleModels,
+      finalResult: isAccessible
+    })
+    return isAccessible
+  }
+
+  // Parse quota limit error and show custom dialog
+  const handleQuotaLimitError = (errorMessage: string) => {
+    // Extract quota information from error message
+    // Example: "Generation limit reached: Hourly limit exceeded (1/1)"
+    const quotaMatch = errorMessage.match(/(.+) limit exceeded \((\d+)\/(\d+)\)/i)
+    
+    if (quotaMatch) {
+      const [, period, used, limit] = quotaMatch
+      const periodType = period.toLowerCase() as "hourly" | "daily" | "monthly"
+      
+      setQuotaDialogData({
+        title: "Generation Limit Reached",
+        message: `You've reached your ${period.toLowerCase()} generation limit. Please wait before generating more images or consider upgrading to Premium for unlimited access.`,
+        quotaInfo: {
+          used: parseInt(used),
+          limit: parseInt(limit),
+          period: periodType
+        }
+      })
+    } else {
+      // Fallback for general quota errors
+      setQuotaDialogData({
+        title: "Generation Limit Reached",
+        message: errorMessage.replace("Generation limit reached: ", ""),
+      })
+    }
+    
+    setQuotaDialogOpen(true)
+  }
+
   // Fetch user and quota status together to avoid race condition
   useEffect(() => {
     let channel: any = null;
@@ -371,7 +524,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       }
       let { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("full_name, is_premium")
+        .select("full_name, is_premium, user_tier")
         .eq("id", session.user.id)
         .single();
       if (profileError) {
@@ -381,7 +534,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           .insert({
             id: session.user.id,
             full_name: session.user.user_metadata?.full_name || session.user.email,
-            is_premium: false
+            is_premium: false,
+            user_tier: 'free'
           })
           .select()
           .single();
@@ -394,7 +548,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setUserName(profile?.full_name || session.user.email || "User");
       setUserEmail(session.user.email || null);
       const isPremium = !!profile?.is_premium;
+      const userTier = profile?.user_tier || 'free';
       setIsFreeUser(!isPremium);
+      
+      // Fetch accessible models for this user's tier
+      await fetchUserAccessibleModels(userTier);
       if (!isPremium) {
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { count } = await supabase
@@ -417,13 +575,23 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setProfileLoading(false);
     }
     fetchUserAndQuota();
-    // Supabase Realtime subscription for profile changes
+    // Supabase Realtime subscription for profile changes and tier access changes
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       supabase.removeAllChannels();
+      
+      // Get user's tier to filter tier_model_access changes
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", session.user.id)
+        .single();
+      
+      const userTier = profile?.user_tier || 'free';
+      
       channel = supabase
-        .channel('profile-updates')
+        .channel('dashboard-updates')
         .on(
           'postgres_changes',
           {
@@ -434,6 +602,19 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           },
           () => {
             fetchUserAndQuota();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen for INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'tier_model_access',
+          },
+          async (payload) => {
+            // Refresh accessible models when tier access changes
+            console.log('🔄 Tier model access changed, refreshing permissions...');
+            await fetchUserAccessibleModels(userTier);
           }
         )
         .subscribe();
@@ -890,90 +1071,115 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-2">
-                                <Label htmlFor="model">Model</Label>
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor="model">Model</Label>
+                                  {isFreeUser && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={refreshModelPermissions}
+                                      disabled={refreshingPermissions}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      {refreshingPermissions ? (
+                                        <>
+                                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                                          Refreshing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <RefreshCw className="w-3 h-3 mr-1" />
+                                          Refresh
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
                                 {!profileLoading ? (
                                   <Select value={model} onValueChange={setModel}>
                                     <SelectTrigger>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="fal-ai/fast-sdxl">
+                                      <SelectItem value="fal-ai/fast-sdxl" disabled={!isModelAccessible("fal-ai/fast-sdxl")} title={!isModelAccessible("fal-ai/fast-sdxl") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Zap className="w-4 h-4 text-green-600" />
                                           <span className="font-semibold">Fast SDXL</span>
                                           <span className="text-green-700 ml-2">$0.0025/image</span>
+                                          {!isModelAccessible("fal-ai/fast-sdxl") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/flux/dev">
+                                      <SelectItem value="fal-ai/flux/dev" disabled={!isModelAccessible("fal-ai/flux/dev")} title={!isModelAccessible("fal-ai/flux/dev") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <ImageIcon className="w-4 h-4 text-yellow-500" />
                                           <span className="font-semibold">FLUX Dev</span>
                                           <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
+                                          {!isModelAccessible("fal-ai/flux/dev") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra")} title={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Rocket className="w-4 h-4 text-pink-600" />
                                           <span className="font-semibold">FLUX Pro Ultra</span>
                                           <span className="text-pink-700 ml-2">$0.06/image</span>
                                           <span className="text-orange-500 ml-1">$0.04/standard</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/ideogram/v2" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/ideogram/v2" disabled={!isModelAccessible("fal-ai/ideogram/v2")} title={!isModelAccessible("fal-ai/ideogram/v2") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <PenTool className="w-4 h-4 text-blue-500" />
                                           <span className="font-semibold">Ideogram v2</span>
                                           <span className="text-blue-600 ml-2">$0.08/image</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/ideogram/v2") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/ideogram/v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/ideogram/v3" disabled={!isModelAccessible("fal-ai/ideogram/v3")} title={!isModelAccessible("fal-ai/ideogram/v3") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <PenTool className="w-4 h-4 text-blue-700" />
                                           <span className="font-semibold">Ideogram v3</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/ideogram/v3") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/recraft-v3" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/recraft-v3" disabled={!isModelAccessible("fal-ai/recraft-v3")} title={!isModelAccessible("fal-ai/recraft-v3") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Palette className="w-4 h-4 text-purple-700" />
                                           <span className="font-semibold">Recraft V3</span>
                                           <span className="text-purple-700 ml-2">$0.04/image</span>
                                           <span className="text-purple-400 ml-1">$0.08/vector</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/recraft-v3") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={!isModelAccessible("fal-ai/stable-diffusion-v35-large")} title={!isModelAccessible("fal-ai/stable-diffusion-v35-large") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Brain className="w-4 h-4 text-indigo-500" />
                                           <span className="font-semibold">Stable Diffusion 3.5 Large</span>
                                           <span className="text-indigo-600 ml-2">$0.065/image</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/stable-diffusion-v35-large") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/hidream-i1-fast" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/hidream-i1-fast" disabled={!isModelAccessible("fal-ai/hidream-i1-fast")} title={!isModelAccessible("fal-ai/hidream-i1-fast") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Rocket className="w-4 h-4 text-cyan-600" />
                                           <span className="font-semibold">HiDream I1 Fast</span>
                                           <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/hidream-i1-fast") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image")} title={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <Brain className="w-4 h-4 text-orange-600" />
                                           <span className="font-semibold">FLUX Kontext T2I</span>
                                           <span className="text-orange-700 ml-2">$0.04/image</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/imagen4/preview" disabled={isFreeUser} title={isFreeUser ? "Upgrade to unlock" : ""}>
+                                      <SelectItem value="fal-ai/imagen4/preview" disabled={!isModelAccessible("fal-ai/imagen4/preview")} title={!isModelAccessible("fal-ai/imagen4/preview") ? "Upgrade to unlock" : ""}>
                                         <span className="inline-flex items-center gap-2">
                                           <ImageIcon className="w-4 h-4 text-pink-500" />
                                           <span className="font-semibold">Imagen 4 Preview</span>
                                           <span className="text-pink-700 ml-2">$0.05/image</span>
-                                          {isFreeUser && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
+                                          {!isModelAccessible("fal-ai/imagen4/preview") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
                                     </SelectContent>
@@ -1621,6 +1827,15 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Custom Quota Limit Dialog */}
+        <QuotaLimitDialog
+          open={quotaDialogOpen}
+          onOpenChange={setQuotaDialogOpen}
+          title={quotaDialogData.title}
+          message={quotaDialogData.message}
+          quotaInfo={quotaDialogData.quotaInfo}
+        />
       </div>
     </div>
   )

@@ -43,7 +43,6 @@ import { AccessControlPanel } from "./access-control-panel"
 interface User {
   id: string
   full_name: string | null
-  email: string | null
   is_premium: boolean
   user_tier: string | null
   created_at: string
@@ -377,7 +376,7 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
 
           {/* Access Control Tab */}
           <TabsContent value="access">
-            <AccessControlPanel initialData={adminData} />
+            <AccessControlPanel initialData={adminData} defaultTab="access" />
           </TabsContent>
 
           {/* Other tabs will be implemented in the AccessControlPanel */}

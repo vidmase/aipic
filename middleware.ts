@@ -17,28 +17,28 @@ export async function middleware(req: NextRequest) {
   try {
     const supabase = createMiddlewareClient({ req, res })
 
-    // Get session with proper error handling
+    // Get user with proper error handling
     const {
-      data: { session },
+      data: { user },
       error
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getUser()
 
     // Log errors but don't block navigation
     if (error) {
-      console.log('Auth session error:', error.message)
+      console.log('Auth user error:', error.message)
     }
 
     const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
     const isDashboardPage = req.nextUrl.pathname.startsWith("/dashboard")
 
     // If user is not signed in and trying to access dashboard, redirect to signin
-    if (!session && isDashboardPage) {
+    if (!user && isDashboardPage) {
       const redirectUrl = new URL("/auth/signin", req.url)
       return NextResponse.redirect(redirectUrl)
     }
 
     // If user is signed in and on auth pages, redirect to dashboard
-    if (session && isAuthPage) {
+    if (user && isAuthPage) {
       const redirectUrl = new URL("/dashboard", req.url)
       return NextResponse.redirect(redirectUrl)
     }

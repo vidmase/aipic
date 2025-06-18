@@ -6,13 +6,13 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient()
     
-    // Get current user session
+    // Get current user
     const {
-      data: { session },
-      error: sessionError
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
 
-    if (sessionError || !session) {
+    if (userError || !user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    if (!ADMIN_EMAILS.includes(session.user.email || "")) {
+    if (!ADMIN_EMAILS.includes(user.email || "")) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the admin action (optional - you could create an admin_logs table)
-    console.log(`Admin ${session.user.email} ${isPremium ? 'granted' : 'removed'} premium access for user ${userId}`)
+    console.log(`Admin ${user.email} ${isPremium ? 'granted' : 'removed'} premium access for user ${userId}`)
 
     return NextResponse.json(
       { 

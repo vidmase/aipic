@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 
 export interface QuotaCheck {
   allowed: boolean
@@ -24,7 +24,7 @@ export class QuotaManager {
   private supabase
 
   constructor() {
-    this.supabase = createServerClient()
+    this.supabase = createServiceRoleClient()
   }
 
   async getUserTier(userId: string): Promise<UserTierInfo | null> {
@@ -163,20 +163,20 @@ export class QuotaManager {
         monthly: quotaLimits.monthly_limit
       }
 
-      // Check if any limit is exceeded
-      if (usage.hourly >= limits.hourly) {
+      // Check if any limit is exceeded - prioritize daily limit for free users
+      if (usage.daily >= limits.daily) {
         return {
           allowed: false,
-          reason: `Hourly limit exceeded (${usage.hourly}/${limits.hourly})`,
+          reason: `Daily limit exceeded (${usage.daily}/${limits.daily})`,
           usage,
           limits
         }
       }
 
-      if (usage.daily >= limits.daily) {
+      if (usage.hourly >= limits.hourly) {
         return {
           allowed: false,
-          reason: `Daily limit exceeded (${usage.daily}/${limits.daily})`,
+          reason: `Hourly limit exceeded (${usage.hourly}/${limits.hourly})`,
           usage,
           limits
         }
@@ -225,19 +225,44 @@ export class QuotaManager {
       const today = now.toISOString().split('T')[0]
       const currentHour = now.getHours()
 
-      // Insert or update usage tracking
-      const { error } = await this.supabase
+      // Insert or update usage tracking - properly increment count
+      // First, try to get existing record
+      const { data: existingRecord } = await this.supabase
         .from('usage_tracking')
-        .upsert({
-          user_id: userId,
-          model_id: model.id,
-          images_generated: imageCount,
-          date: today,
-          hour: currentHour
-        }, {
-          onConflict: 'user_id,model_id,date,hour',
-          ignoreDuplicates: false
-        })
+        .select('images_generated')
+        .eq('user_id', userId)
+        .eq('model_id', model.id)
+        .eq('date', today)
+        .eq('hour', currentHour)
+        .single()
+
+      let error: any = null
+      
+      if (existingRecord) {
+        // Update existing record by incrementing
+        const { error: updateError } = await this.supabase
+          .from('usage_tracking')
+          .update({
+            images_generated: existingRecord.images_generated + imageCount
+          })
+          .eq('user_id', userId)
+          .eq('model_id', model.id)
+          .eq('date', today)
+          .eq('hour', currentHour)
+        error = updateError
+      } else {
+        // Insert new record
+        const { error: insertError } = await this.supabase
+          .from('usage_tracking')
+          .insert({
+            user_id: userId,
+            model_id: model.id,
+            images_generated: imageCount,
+            date: today,
+            hour: currentHour
+          })
+        error = insertError
+      }
 
       if (error) {
         console.error('Error tracking usage:', error)

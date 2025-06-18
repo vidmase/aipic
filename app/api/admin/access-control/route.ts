@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createServerClient, createServiceRoleClient } from "@/lib/supabase/server"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -15,26 +15,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
+    // Use service role client for admin operations
+    const adminSupabase = createServiceRoleClient()
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
 
     switch (type) {
       case 'tiers':
-        const { data: tiers } = await supabase
+        const { data: tiers } = await adminSupabase
           .from('user_tiers')
           .select('*')
           .order('name')
         return NextResponse.json({ tiers })
 
       case 'models':
-        const { data: models } = await supabase
+        const { data: models } = await adminSupabase
           .from('image_models')
           .select('*')
           .order('display_name')
         return NextResponse.json({ models })
 
       case 'access':
-        const { data: access } = await supabase
+        const { data: access } = await adminSupabase
           .from('tier_model_access')
           .select(`
             *,
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ access })
 
       case 'quotas':
-        const { data: quotas } = await supabase
+        const { data: quotas } = await adminSupabase
           .from('quota_limits')
           .select(`
             *,
@@ -54,11 +56,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ quotas })
 
       case 'usage':
-        const { data: usage } = await supabase
+        const { data: usage } = await adminSupabase
           .from('usage_tracking')
           .select(`
             *,
-            profiles(full_name, email),
+            profiles(full_name),
             image_models(model_id, display_name)
           `)
           .order('created_at', { ascending: false })
@@ -79,56 +81,84 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔧 Admin API POST request received')
+    
     const supabase = createServerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.log('❌ Authentication failed:', authError)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    console.log('👤 User authenticated:', user.email)
+
     if (!ADMIN_EMAILS.includes(user.email || "")) {
+      console.log('🚫 User not in admin list:', user.email)
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
 
+    console.log('✅ Admin access confirmed')
+
+    // Use service role client for admin operations
+    const adminSupabase = createServiceRoleClient()
     const body = await request.json()
     const { action, data } = body
+    
+    console.log('📝 Action requested:', action)
+    console.log('📊 Data payload:', JSON.stringify(data, null, 2))
 
     switch (action) {
       case 'update_tier_access': {
+        console.log('🔄 Updating tier access...')
         const { tier_id, model_id, is_enabled } = data
-        const { error: accessError } = await supabase
-          .from('tier_model_access')
-          .upsert({
-            tier_id,
-            model_id,
-            is_enabled,
-            updated_at: new Date().toISOString()
-          })
+        console.log('📋 Update data:', { tier_id, model_id, is_enabled })
         
-        if (accessError) throw accessError
+        // First try to update existing record
+        const { error: updateError } = await adminSupabase
+          .from('tier_model_access')
+          .update({ is_enabled })
+          .eq('tier_id', tier_id)
+          .eq('model_id', model_id)
+        
+        if (updateError) {
+          console.log('❌ Tier access update failed:', updateError)
+          throw updateError
+        }
+        
+        console.log('✅ Tier access updated successfully')
         return NextResponse.json({ success: true, message: "Access updated successfully" })
       }
 
       case 'update_quota': {
+        console.log('📊 Updating quota limits...')
         const { tier_id: quota_tier_id, model_id: quota_model_id, daily_limit, monthly_limit, hourly_limit } = data
-        const { error: quotaError } = await supabase
+        console.log('📋 Quota data:', { quota_tier_id, quota_model_id, daily_limit, monthly_limit, hourly_limit })
+        
+        // Update existing quota record
+        const { error: quotaError } = await adminSupabase
           .from('quota_limits')
-          .upsert({
-            tier_id: quota_tier_id,
-            model_id: quota_model_id,
+          .update({
             daily_limit,
             monthly_limit,
             hourly_limit,
             updated_at: new Date().toISOString()
           })
+          .eq('tier_id', quota_tier_id)
+          .eq('model_id', quota_model_id)
         
-        if (quotaError) throw quotaError
+        if (quotaError) {
+          console.log('❌ Quota update failed:', quotaError)
+          throw quotaError
+        }
+        
+        console.log('✅ Quota updated successfully')
         return NextResponse.json({ success: true, message: "Quota updated successfully" })
       }
 
       case 'create_tier': {
         const { name, display_name, description } = data
-        const { error: tierError } = await supabase
+        const { error: tierError } = await adminSupabase
           .from('user_tiers')
           .insert({
             name,
@@ -143,7 +173,7 @@ export async function POST(request: NextRequest) {
 
       case 'create_model': {
         const { model_id, display_name: model_display_name, description: model_description, provider } = data
-        const { error: modelError } = await supabase
+        const { error: modelError } = await adminSupabase
           .from('image_models')
           .insert({
             model_id,
@@ -158,27 +188,41 @@ export async function POST(request: NextRequest) {
       }
 
       case 'update_user_tier': {
+        console.log('👤 Updating user tier...')
         const { user_id, new_tier } = data
-        const { error: userError } = await supabase
+        console.log('📋 User tier data:', { user_id, new_tier })
+        
+        const { error: userError } = await adminSupabase
           .from('profiles')
           .update({
             user_tier: new_tier,
-            is_premium: new_tier === 'premium' || new_tier === 'admin',
-            updated_at: new Date().toISOString()
+            is_premium: new_tier === 'premium' || new_tier === 'admin'
           })
           .eq('id', user_id)
         
-        if (userError) throw userError
+        if (userError) {
+          console.log('❌ User tier update failed:', userError)
+          throw userError
+        }
+        
+        console.log('✅ User tier updated successfully')
         return NextResponse.json({ success: true, message: "User tier updated successfully" })
       }
 
       default:
+        console.log('❓ Unknown action requested:', action)
         return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
   } catch (error) {
-    console.error("Access control API error:", error)
+    console.error("💥 Access control API error:", error)
+    console.error("📍 Error details:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    })
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
     )
   }

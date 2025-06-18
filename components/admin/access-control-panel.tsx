@@ -41,7 +41,8 @@ import {
   BarChart3,
   Clock,
   Calendar,
-  Zap
+  Zap,
+  RefreshCw
 } from "lucide-react"
 
 interface UserTier {
@@ -88,7 +89,7 @@ interface UsageData {
   images_generated: number
   date: string
   hour: number
-  profiles: { full_name: string; email: string }
+  profiles: { full_name: string }
   image_models: { model_id: string; display_name: string }
 }
 
@@ -99,9 +100,10 @@ interface AccessControlPanelProps {
     access: any[]
     quotas: any[]
   }
+  defaultTab?: string
 }
 
-export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
+export function AccessControlPanel({ initialData, defaultTab = "access" }: AccessControlPanelProps) {
   const [tiers, setTiers] = useState<UserTier[]>(initialData.tiers || [])
   const [models, setModels] = useState<ImageModel[]>(initialData.models || [])
   const [tierAccess, setTierAccess] = useState<TierAccess[]>(initialData.access || [])
@@ -109,13 +111,27 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
   const [usage, setUsage] = useState<UsageData[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  
+  const [refreshingUsage, setRefreshingUsage] = useState(false)
+
   // Form states
   const [newTier, setNewTier] = useState({ name: '', display_name: '', description: '' })
   const [newModel, setNewModel] = useState({ model_id: '', display_name: '', description: '', provider: 'fal-ai' })
   const [selectedQuota, setSelectedQuota] = useState<QuotaLimit | null>(null)
   
+  // Filter states
+  const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all')
+  
   const { toast } = useToast()
+
+  // Filter the tierAccess data based on selected tier
+  const filteredTierAccess = selectedTierFilter === 'all' 
+    ? tierAccess 
+    : tierAccess.filter(access => access.tier_id === selectedTierFilter)
+
+  // Filter the quotas data based on selected tier
+  const filteredQuotas = selectedTierFilter === 'all' 
+    ? quotas 
+    : quotas.filter(quota => quota.tier_id === selectedTierFilter)
 
   useEffect(() => {
     loadUsageData()
@@ -127,9 +143,44 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
       if (usageRes.ok) {
         const usageData = await usageRes.json()
         setUsage(usageData.usage || [])
+      } else {
+        console.warn('Usage data API returned error:', usageRes.status, usageRes.statusText)
+        setUsage([]) // Set empty array on API error
       }
     } catch (error) {
       console.error('Error loading usage data:', error)
+      setUsage([]) // Set empty array on network error
+    }
+  }
+
+  const refreshUsageData = async () => {
+    setRefreshingUsage(true)
+    try {
+      const usageRes = await fetch('/api/admin/access-control?type=usage')
+      if (usageRes.ok) {
+        const usageData = await usageRes.json()
+        setUsage(usageData.usage || [])
+        toast({
+          title: "Success",
+          description: "Usage analytics refreshed successfully",
+        })
+      } else {
+        console.warn('Usage data API returned error:', usageRes.status, usageRes.statusText)
+        toast({
+          title: "Warning",
+          description: "Failed to refresh usage data",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error refreshing usage data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to refresh usage analytics",
+        variant: "destructive",
+      })
+    } finally {
+      setRefreshingUsage(false)
     }
   }
 
@@ -336,7 +387,7 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
         </div>
       </div>
 
-      <Tabs defaultValue="access" className="space-y-4">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="access">Model Access</TabsTrigger>
           <TabsTrigger value="quotas">Quota Limits</TabsTrigger>
@@ -357,6 +408,36 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tier-filter">Filter by User Tier:</Label>
+                  <Select
+                    value={selectedTierFilter}
+                    onValueChange={setSelectedTierFilter}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tiers</SelectItem>
+                      {tiers.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.id}>
+                          {tier.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedTierFilter !== 'all' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedTierFilter('all')}
+                  >
+                    Clear Filter
+                  </Button>
+                )}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -367,28 +448,39 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tierAccess.map((access) => (
-                    <TableRow key={access.id}>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {access.user_tiers.display_name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{access.image_models.display_name}</TableCell>
-                      <TableCell>
-                        <Badge variant={access.is_enabled ? "default" : "secondary"}>
-                          {access.is_enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={access.is_enabled}
-                          onCheckedChange={() => handleAccessToggle(access.id, access.is_enabled)}
-                          disabled={saving}
-                        />
+                  {filteredTierAccess.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        {selectedTierFilter === 'all' 
+                          ? 'No tier access data found' 
+                          : 'No models found for selected tier'
+                        }
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredTierAccess.map((access) => (
+                      <TableRow key={access.id}>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {access.user_tiers?.display_name || 'Unknown Tier'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{access.image_models?.display_name || 'Unknown Model'}</TableCell>
+                        <TableCell>
+                          <Badge variant={access.is_enabled ? "default" : "secondary"}>
+                            {access.is_enabled ? "Enabled" : "Disabled"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={access.is_enabled}
+                            onCheckedChange={() => handleAccessToggle(access.id, access.is_enabled)}
+                            disabled={saving}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -407,6 +499,36 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="quota-tier-filter">Filter by User Tier:</Label>
+                  <Select
+                    value={selectedTierFilter}
+                    onValueChange={setSelectedTierFilter}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tiers</SelectItem>
+                      {tiers.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.id}>
+                          {tier.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedTierFilter !== 'all' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedTierFilter('all')}
+                  >
+                    Clear Filter
+                  </Button>
+                )}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -419,7 +541,17 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {quotas.map((quota) => (
+                  {filteredQuotas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        {selectedTierFilter === 'all' 
+                          ? 'No quota data found' 
+                          : 'No quotas found for selected tier'
+                        }
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredQuotas.map((quota) => (
                     <TableRow key={quota.id}>
                       <TableCell>
                         <Badge variant="outline">
@@ -440,7 +572,8 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -608,13 +741,33 @@ export function AccessControlPanel({ initialData }: AccessControlPanelProps) {
         <TabsContent value="usage" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Usage Analytics
-              </CardTitle>
-              <CardDescription>
-                Monitor real-time usage across all users and models
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Usage Analytics
+                  </CardTitle>
+                  <CardDescription>
+                    Monitor real-time usage across all users and models
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={refreshUsageData}
+                  disabled={refreshingUsage}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200"
+                >
+                  {refreshingUsage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">
+                    {refreshingUsage ? "Refreshing..." : "Refresh"}
+                  </span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>

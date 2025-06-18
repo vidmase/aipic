@@ -1097,98 +1097,199 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 </div>
                                 {!profileLoading ? (
                                   <Select value={model} onValueChange={setModel}>
-                                    <SelectTrigger>
-                                      <SelectValue />
+                                    <SelectTrigger className="h-12">
+                                      <SelectValue placeholder="Choose AI model..." />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="w-[400px] max-h-[500px] overflow-y-auto">
+                                      {/* Fast & Efficient Models */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                        Fast & Budget-Friendly
+                                      </div>
                                       <SelectItem value="fal-ai/fast-sdxl" disabled={!isModelAccessible("fal-ai/fast-sdxl")} title={!isModelAccessible("fal-ai/fast-sdxl") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Zap className="w-4 h-4 text-green-600" />
-                                          <span className="font-semibold">Fast SDXL</span>
-                                          {!isFreeUser && <span className="text-green-700 ml-2">$0.0025/image</span>}
-                                          {!isModelAccessible("fal-ai/fast-sdxl") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Zap className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Fast SDXL</div>
+                                              <div className="text-xs text-gray-500">Quick generation, good quality</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-green-700 font-medium">$0.0025</span>}
+                                            {!isModelAccessible("fal-ai/fast-sdxl") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
                                       </SelectItem>
-                                      <SelectItem value="fal-ai/flux/dev" disabled={!isModelAccessible("fal-ai/flux/dev")} title={!isModelAccessible("fal-ai/flux/dev") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <ImageIcon className="w-4 h-4 text-yellow-500" />
-                                          <span className="font-semibold">FLUX Dev</span>
-                                          {!isFreeUser && <span className="text-yellow-600 ml-2">$0.025/megapixel</span>}
-                                          {!isModelAccessible("fal-ai/flux/dev") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
-                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra")} title={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Rocket className="w-4 h-4 text-pink-600" />
-                                          <span className="font-semibold">FLUX Pro Ultra</span>
-                                          {!isFreeUser && (
-                                            <>
-                                              <span className="text-pink-700 ml-2">$0.06/image</span>
-                                              <span className="text-orange-500 ml-1">$0.04/standard</span>
-                                            </>
-                                          )}
-                                          {!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
-                                      <SelectItem value="fal-ai/ideogram/v2" disabled={!isModelAccessible("fal-ai/ideogram/v2")} title={!isModelAccessible("fal-ai/ideogram/v2") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <PenTool className="w-4 h-4 text-blue-500" />
-                                          <span className="font-semibold">Ideogram v2</span>
-                                          {!isFreeUser && <span className="text-blue-600 ml-2">$0.08/image</span>}
-                                          {!isModelAccessible("fal-ai/ideogram/v2") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
-                                      <SelectItem value="fal-ai/ideogram/v3" disabled={!isModelAccessible("fal-ai/ideogram/v3")} title={!isModelAccessible("fal-ai/ideogram/v3") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <PenTool className="w-4 h-4 text-blue-700" />
-                                          <span className="font-semibold">Ideogram v3</span>
-                                          {!isModelAccessible("fal-ai/ideogram/v3") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
-                                      <SelectItem value="fal-ai/recraft-v3" disabled={!isModelAccessible("fal-ai/recraft-v3")} title={!isModelAccessible("fal-ai/recraft-v3") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Palette className="w-4 h-4 text-purple-700" />
-                                          <span className="font-semibold">Recraft V3</span>
-                                          {!isFreeUser && (
-                                            <>
-                                              <span className="text-purple-700 ml-2">$0.04/image</span>
-                                              <span className="text-purple-400 ml-1">$0.08/vector</span>
-                                            </>
-                                          )}
-                                          {!isModelAccessible("fal-ai/recraft-v3") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
-                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={!isModelAccessible("fal-ai/stable-diffusion-v35-large")} title={!isModelAccessible("fal-ai/stable-diffusion-v35-large") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Brain className="w-4 h-4 text-indigo-500" />
-                                          <span className="font-semibold">Stable Diffusion 3.5 Large</span>
-                                          {!isFreeUser && <span className="text-indigo-600 ml-2">$0.065/image</span>}
-                                          {!isModelAccessible("fal-ai/stable-diffusion-v35-large") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
-                                      </SelectItem>
+                                      
                                       <SelectItem value="fal-ai/hidream-i1-fast" disabled={!isModelAccessible("fal-ai/hidream-i1-fast")} title={!isModelAccessible("fal-ai/hidream-i1-fast") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Rocket className="w-4 h-4 text-cyan-600" />
-                                          <span className="font-semibold">HiDream I1 Fast</span>
-                                          {!isFreeUser && <span className="text-cyan-700 ml-2">$0.01/megapixel</span>}
-                                          {!isModelAccessible("fal-ai/hidream-i1-fast") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Rocket className="w-4 h-4 text-cyan-600 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">HiDream I1 Fast</div>
+                                              <div className="text-xs text-gray-500">Ultra-fast Asian aesthetics</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-cyan-700 font-medium">$0.01/MP</span>}
+                                            {!isModelAccessible("fal-ai/hidream-i1-fast") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
                                       </SelectItem>
+
+                                      {/* Premium FLUX Models */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
+                                        FLUX Models
+                                      </div>
+                                      <SelectItem value="fal-ai/flux/dev" disabled={!isModelAccessible("fal-ai/flux/dev")} title={!isModelAccessible("fal-ai/flux/dev") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <ImageIcon className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">FLUX Dev</div>
+                                              <div className="text-xs text-gray-500">High quality, versatile</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-yellow-600 font-medium">$0.025/MP</span>}
+                                            {!isModelAccessible("fal-ai/flux/dev") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra")} title={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Rocket className="w-4 h-4 text-pink-600 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">FLUX Pro Ultra</div>
+                                              <div className="text-xs text-gray-500">Premium quality, photorealistic</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.04-0.06</span>}
+                                            {!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
                                       <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image")} title={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <Brain className="w-4 h-4 text-orange-600" />
-                                          <span className="font-semibold">FLUX Kontext T2I</span>
-                                          {!isFreeUser && <span className="text-orange-700 ml-2">$0.04/image</span>}
-                                          {!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Brain className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">FLUX Kontext T2I</div>
+                                              <div className="text-xs text-gray-500">Context-aware generation</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-orange-700 font-medium">$0.04</span>}
+                                            {!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
                                       </SelectItem>
+
+                                      {/* Text & Logo Models */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
+                                        Text & Logo Generation
+                                      </div>
+                                      <SelectItem value="fal-ai/ideogram/v2" disabled={!isModelAccessible("fal-ai/ideogram/v2")} title={!isModelAccessible("fal-ai/ideogram/v2") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <PenTool className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Ideogram v2</div>
+                                              <div className="text-xs text-gray-500">Excellent text rendering</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-blue-600 font-medium">$0.08</span>}
+                                            {!isModelAccessible("fal-ai/ideogram/v2") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      <SelectItem value="fal-ai/ideogram/v3" disabled={!isModelAccessible("fal-ai/ideogram/v3")} title={!isModelAccessible("fal-ai/ideogram/v3") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <PenTool className="w-4 h-4 text-blue-700 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Ideogram v3</div>
+                                              <div className="text-xs text-gray-500">Latest text & logo model</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isModelAccessible("fal-ai/ideogram/v3") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      <SelectItem value="fal-ai/recraft-v3" disabled={!isModelAccessible("fal-ai/recraft-v3")} title={!isModelAccessible("fal-ai/recraft-v3") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Palette className="w-4 h-4 text-purple-700 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Recraft V3</div>
+                                              <div className="text-xs text-gray-500">Vector & design generation</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-purple-700 font-medium">$0.04-0.08</span>}
+                                            {!isModelAccessible("fal-ai/recraft-v3") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      {/* Google & Advanced Models */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
+                                        Advanced Models
+                                      </div>
                                       <SelectItem value="fal-ai/imagen4/preview" disabled={!isModelAccessible("fal-ai/imagen4/preview")} title={!isModelAccessible("fal-ai/imagen4/preview") ? "Upgrade to unlock" : ""}>
-                                        <span className="inline-flex items-center gap-2">
-                                          <ImageIcon className="w-4 h-4 text-pink-500" />
-                                          <span className="font-semibold">Imagen 4 Preview</span>
-                                          {!isFreeUser && <span className="text-pink-700 ml-2">$0.05/image</span>}
-                                          {!isModelAccessible("fal-ai/imagen4/preview") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
-                                        </span>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <ImageIcon className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Imagen 4 Preview</div>
+                                              <div className="text-xs text-gray-500">Google's latest AI model</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.05</span>}
+                                            {!isModelAccessible("fal-ai/imagen4/preview") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      <SelectItem value="fal-ai/imagen4/preview/ultra" disabled={!isModelAccessible("fal-ai/imagen4/preview/ultra")} title={!isModelAccessible("fal-ai/imagen4/preview/ultra") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <ImageIcon className="w-4 h-4 text-pink-600 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Imagen4-Ultra</div>
+                                              <div className="text-xs text-gray-500">Ultra-high quality generation</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.08</span>}
+                                            {!isModelAccessible("fal-ai/imagen4/preview/ultra") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
+                                      </SelectItem>
+
+                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={!isModelAccessible("fal-ai/stable-diffusion-v35-large")} title={!isModelAccessible("fal-ai/stable-diffusion-v35-large") ? "Upgrade to unlock" : ""}>
+                                        <div className="flex items-center justify-between w-full py-1">
+                                          <div className="flex items-center gap-3">
+                                            <Brain className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                                            <div>
+                                              <div className="font-semibold">Stable Diffusion 3.5 Large</div>
+                                              <div className="text-xs text-gray-500">Open-source powerhouse</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isFreeUser && <span className="text-xs text-indigo-600 font-medium">$0.065</span>}
+                                            {!isModelAccessible("fal-ai/stable-diffusion-v35-large") && <Lock className="w-4 h-4 text-gray-400" />}
+                                          </div>
+                                        </div>
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>

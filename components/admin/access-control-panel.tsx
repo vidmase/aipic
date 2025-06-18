@@ -377,24 +377,48 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Access Control & Quotas</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Access Control & Quotas</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage user tiers, model access, and generation limits
           </p>
         </div>
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="access">Model Access</TabsTrigger>
-          <TabsTrigger value="quotas">Quota Limits</TabsTrigger>
-          <TabsTrigger value="tiers">User Tiers</TabsTrigger>
-          <TabsTrigger value="models">AI Models</TabsTrigger>
-          <TabsTrigger value="usage">Usage Analytics</TabsTrigger>
-        </TabsList>
+        <div className="relative">
+          <div className="overflow-x-auto scrollbar-hide">
+            <TabsList className="inline-flex h-12 sm:h-10 w-full min-w-max sm:grid sm:grid-cols-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+              <TabsTrigger value="access" className="px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Shield className="w-4 h-4 mr-1.5 sm:hidden" />
+                <span className="hidden sm:inline">Model Access</span>
+                <span className="sm:hidden">Access</span>
+              </TabsTrigger>
+              <TabsTrigger value="quotas" className="px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Zap className="w-4 h-4 mr-1.5 sm:hidden" />
+                <span className="hidden sm:inline">Quota Limits</span>
+                <span className="sm:hidden">Quotas</span>
+              </TabsTrigger>
+              <TabsTrigger value="tiers" className="px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Users className="w-4 h-4 mr-1.5 sm:hidden" />
+                <span className="hidden sm:inline">User Tiers</span>
+                <span className="sm:hidden">Tiers</span>
+              </TabsTrigger>
+              <TabsTrigger value="models" className="px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Bot className="w-4 h-4 mr-1.5 sm:hidden" />
+                <span className="hidden sm:inline">AI Models</span>
+                <span className="sm:hidden">Models</span>
+              </TabsTrigger>
+              <TabsTrigger value="usage" className="px-3 sm:px-4 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <BarChart3 className="w-4 h-4 mr-1.5 sm:hidden" />
+                <span className="hidden sm:inline">Usage Analytics</span>
+                <span className="sm:hidden">Analytics</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         <TabsContent value="access" className="space-y-4">
           <Card>
@@ -408,14 +432,14 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="tier-filter">Filter by User Tier:</Label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                  <Label htmlFor="tier-filter" className="text-sm font-medium whitespace-nowrap">Filter by Tier:</Label>
                   <Select
                     value={selectedTierFilter}
                     onValueChange={setSelectedTierFilter}
                   >
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Select tier" />
                     </SelectTrigger>
                     <SelectContent>
@@ -433,56 +457,96 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedTierFilter('all')}
+                    className="self-start sm:self-center"
                   >
                     Clear Filter
                   </Button>
                 )}
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User Tier</TableHead>
-                    <TableHead>AI Model</TableHead>
-                    <TableHead>Access Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTierAccess.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        {selectedTierFilter === 'all' 
-                          ? 'No tier access data found' 
-                          : 'No models found for selected tier'
-                        }
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredTierAccess.map((access) => (
-                      <TableRow key={access.id}>
-                        <TableCell>
-                          <Badge variant="outline">
+              
+              {/* Mobile Card View */}
+              <div className="block sm:hidden space-y-3">
+                {filteredTierAccess.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {selectedTierFilter === 'all' 
+                      ? 'No tier access data found' 
+                      : 'No models found for selected tier'
+                    }
+                  </div>
+                ) : (
+                  filteredTierAccess.map((access) => (
+                    <Card key={access.id} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
                             {access.user_tiers?.display_name || 'Unknown Tier'}
                           </Badge>
-                        </TableCell>
-                        <TableCell>{access.image_models?.display_name || 'Unknown Model'}</TableCell>
-                        <TableCell>
-                          <Badge variant={access.is_enabled ? "default" : "secondary"}>
-                            {access.is_enabled ? "Enabled" : "Disabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <Switch
                             checked={access.is_enabled}
                             onCheckedChange={() => handleAccessToggle(access.id, access.is_enabled)}
                             disabled={saving}
                           />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{access.image_models?.display_name || 'Unknown Model'}</p>
+                          <Badge variant={access.is_enabled ? "default" : "secondary"} className="mt-1 text-xs">
+                            {access.is_enabled ? "Enabled" : "Disabled"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+              
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User Tier</TableHead>
+                      <TableHead>AI Model</TableHead>
+                      <TableHead>Access Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTierAccess.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          {selectedTierFilter === 'all' 
+                            ? 'No tier access data found' 
+                            : 'No models found for selected tier'
+                          }
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      filteredTierAccess.map((access) => (
+                        <TableRow key={access.id}>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {access.user_tiers?.display_name || 'Unknown Tier'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{access.image_models?.display_name || 'Unknown Model'}</TableCell>
+                          <TableCell>
+                            <Badge variant={access.is_enabled ? "default" : "secondary"}>
+                              {access.is_enabled ? "Enabled" : "Disabled"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={access.is_enabled}
+                              onCheckedChange={() => handleAccessToggle(access.id, access.is_enabled)}
+                              disabled={saving}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -499,14 +563,14 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="quota-tier-filter">Filter by User Tier:</Label>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                  <Label htmlFor="quota-tier-filter" className="text-sm font-medium whitespace-nowrap">Filter by Tier:</Label>
                   <Select
                     value={selectedTierFilter}
                     onValueChange={setSelectedTierFilter}
                   >
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Select tier" />
                     </SelectTrigger>
                     <SelectContent>
@@ -524,64 +588,117 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedTierFilter('all')}
+                    className="self-start sm:self-center"
                   >
                     Clear Filter
                   </Button>
                 )}
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User Tier</TableHead>
-                    <TableHead>AI Model</TableHead>
-                    <TableHead>Hourly Limit</TableHead>
-                    <TableHead>Daily Limit</TableHead>
-                    <TableHead>Monthly Limit</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredQuotas.length === 0 ? (
+              
+              {/* Mobile Card View */}
+              <div className="block sm:hidden space-y-3">
+                {filteredQuotas.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {selectedTierFilter === 'all' 
+                      ? 'No quota data found' 
+                      : 'No quotas found for selected tier'
+                    }
+                  </div>
+                ) : (
+                  filteredQuotas.map((quota) => (
+                    <Card key={quota.id} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
+                            {quota.user_tiers.display_name}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedQuota(quota)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm mb-2">{quota.image_models.display_name}</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Hourly</p>
+                              <Badge variant="secondary" className="text-xs">{quota.hourly_limit}</Badge>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Daily</p>
+                              <Badge variant="secondary" className="text-xs">{quota.daily_limit}</Badge>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Monthly</p>
+                              <Badge variant="secondary" className="text-xs">{quota.monthly_limit}</Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+              
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        {selectedTierFilter === 'all' 
-                          ? 'No quota data found' 
-                          : 'No quotas found for selected tier'
-                        }
-                      </TableCell>
+                      <TableHead>User Tier</TableHead>
+                      <TableHead>AI Model</TableHead>
+                      <TableHead>Hourly Limit</TableHead>
+                      <TableHead>Daily Limit</TableHead>
+                      <TableHead>Monthly Limit</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredQuotas.map((quota) => (
-                    <TableRow key={quota.id}>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {quota.user_tiers.display_name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{quota.image_models.display_name}</TableCell>
-                      <TableCell>{quota.hourly_limit}</TableCell>
-                      <TableCell>{quota.daily_limit}</TableCell>
-                      <TableCell>{quota.monthly_limit}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedQuota(quota)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredQuotas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          {selectedTierFilter === 'all' 
+                            ? 'No quota data found' 
+                            : 'No quotas found for selected tier'
+                          }
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredQuotas.map((quota) => (
+                      <TableRow key={quota.id}>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {quota.user_tiers.display_name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{quota.image_models.display_name}</TableCell>
+                        <TableCell>{quota.hourly_limit}</TableCell>
+                        <TableCell>{quota.daily_limit}</TableCell>
+                        <TableCell>{quota.monthly_limit}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedQuota(quota)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="tiers" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -589,15 +706,15 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                   User Tiers
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {tiers.map((tier) => (
-                  <div key={tier.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{tier.display_name}</h4>
-                        <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  <div key={tier.id} className="p-3 sm:p-4 border rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm sm:text-base">{tier.display_name}</h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{tier.description}</p>
                       </div>
-                      <Badge variant={tier.is_active ? "default" : "secondary"}>
+                      <Badge variant={tier.is_active ? "default" : "secondary"} className="self-start sm:self-center">
                         {tier.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
@@ -615,33 +732,37 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tier-name">Tier Name</Label>
+                  <Label htmlFor="tier-name" className="text-sm">Tier Name</Label>
                   <Input
                     id="tier-name"
                     value={newTier.name}
                     onChange={(e) => setNewTier({...newTier, name: e.target.value})}
                     placeholder="e.g., pro, enterprise"
+                    className="text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tier-display">Display Name</Label>
+                  <Label htmlFor="tier-display" className="text-sm">Display Name</Label>
                   <Input
                     id="tier-display"
                     value={newTier.display_name}
                     onChange={(e) => setNewTier({...newTier, display_name: e.target.value})}
                     placeholder="e.g., Pro, Enterprise"
+                    className="text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tier-description">Description</Label>
+                  <Label htmlFor="tier-description" className="text-sm">Description</Label>
                   <Textarea
                     id="tier-description"
                     value={newTier.description}
                     onChange={(e) => setNewTier({...newTier, description: e.target.value})}
                     placeholder="Describe this tier..."
+                    className="text-sm resize-none"
+                    rows={3}
                   />
                 </div>
-                <Button onClick={handleCreateTier} disabled={saving}>
+                <Button onClick={handleCreateTier} disabled={saving} className="w-full sm:w-auto">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                   Create Tier
                 </Button>
@@ -651,7 +772,7 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
         </TabsContent>
 
         <TabsContent value="models" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -659,16 +780,16 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                   AI Models
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {models.map((model) => (
-                  <div key={model.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{model.display_name}</h4>
-                        <p className="text-sm text-muted-foreground">{model.model_id}</p>
-                        <p className="text-xs text-muted-foreground">{model.description}</p>
+                  <div key={model.id} className="p-3 sm:p-4 border rounded-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm sm:text-base">{model.display_name}</h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{model.model_id}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{model.description}</p>
                       </div>
-                      <Badge variant={model.is_active ? "default" : "secondary"}>
+                      <Badge variant={model.is_active ? "default" : "secondary"} className="self-start">
                         {model.provider}
                       </Badge>
                     </div>
@@ -686,30 +807,32 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="model-id">Model ID</Label>
+                  <Label htmlFor="model-id" className="text-sm">Model ID</Label>
                   <Input
                     id="model-id"
                     value={newModel.model_id}
                     onChange={(e) => setNewModel({...newModel, model_id: e.target.value})}
                     placeholder="e.g., fal-ai/flux/pro"
+                    className="text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="model-display">Display Name</Label>
+                  <Label htmlFor="model-display" className="text-sm">Display Name</Label>
                   <Input
                     id="model-display"
                     value={newModel.display_name}
                     onChange={(e) => setNewModel({...newModel, display_name: e.target.value})}
                     placeholder="e.g., Flux Pro"
+                    className="text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="model-provider">Provider</Label>
+                  <Label htmlFor="model-provider" className="text-sm">Provider</Label>
                   <Select
                     value={newModel.provider}
                     onValueChange={(value) => setNewModel({...newModel, provider: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -721,15 +844,17 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="model-description">Description</Label>
+                  <Label htmlFor="model-description" className="text-sm">Description</Label>
                   <Textarea
                     id="model-description"
                     value={newModel.description}
                     onChange={(e) => setNewModel({...newModel, description: e.target.value})}
                     placeholder="Describe this model..."
+                    className="text-sm resize-none"
+                    rows={3}
                   />
                 </div>
-                <Button onClick={handleCreateModel} disabled={saving}>
+                <Button onClick={handleCreateModel} disabled={saving} className="w-full sm:w-auto">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                   Add Model
                 </Button>
@@ -770,35 +895,74 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Images Generated</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Hour</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usage.slice(0, 50).map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{item.profiles.full_name || 'Unknown'}</div>
-                          <div className="text-sm text-muted-foreground">{item.profiles.email}</div>
+              {/* Mobile Card View */}
+              <div className="block sm:hidden space-y-3">
+                {usage.slice(0, 50).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No usage data available
+                  </div>
+                ) : (
+                  usage.slice(0, 50).map((item) => (
+                    <Card key={item.id} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{item.profiles.full_name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{item.profiles.email}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {item.images_generated} images
+                          </Badge>
                         </div>
-                      </TableCell>
-                      <TableCell>{item.image_models.display_name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{item.images_generated}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{item.hour}:00</TableCell>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Model</p>
+                            <p className="font-medium">{item.image_models.display_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Date & Time</p>
+                            <p className="font-medium">{new Date(item.date).toLocaleDateString()}</p>
+                            <p className="text-xs text-muted-foreground">{item.hour}:00</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+              
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Images Generated</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Hour</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {usage.slice(0, 50).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.profiles.full_name || 'Unknown'}</div>
+                            <div className="text-sm text-muted-foreground">{item.profiles.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.image_models.display_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.images_generated}</Badge>
+                        </TableCell>
+                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{item.hour}:00</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

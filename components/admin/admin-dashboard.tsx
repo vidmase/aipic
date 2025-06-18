@@ -235,34 +235,33 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
         </div>
 
         {/* Admin Tabs Interface */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">User Management</span>
-              <span className="sm:hidden">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="access" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Model Access</span>
-              <span className="sm:hidden">Access</span>
-            </TabsTrigger>
-            <TabsTrigger value="quotas" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">Quota Management</span>
-              <span className="sm:hidden">Quotas</span>
-            </TabsTrigger>
-            <TabsTrigger value="tiers" className="flex items-center gap-2">
-              <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">User Tiers</span>
-              <span className="sm:hidden">Tiers</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              <span className="hidden sm:inline">Usage Analytics</span>
-              <span className="sm:hidden">Analytics</span>
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
+          <div className="relative">
+            <div className="overflow-x-auto scrollbar-hide">
+              <TabsList className="inline-flex h-12 sm:h-10 w-full min-w-max sm:grid sm:grid-cols-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <TabsTrigger value="users" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
+                  <Users className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Users</span>
+                </TabsTrigger>
+                <TabsTrigger value="access" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
+                  <Shield className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Access</span>
+                </TabsTrigger>
+                <TabsTrigger value="quotas" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
+                  <Zap className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Quotas</span>
+                </TabsTrigger>
+                <TabsTrigger value="tiers" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
+                  <Crown className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Tiers</span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
+                  <TrendingUp className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Analytics</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
           {/* User Management Tab */}
           <TabsContent value="users">

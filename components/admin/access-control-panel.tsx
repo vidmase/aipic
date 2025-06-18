@@ -120,6 +120,7 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
   
   // Filter states
   const [selectedTierFilter, setSelectedTierFilter] = useState<string>('all')
+  const [usageTimeFrame, setUsageTimeFrame] = useState<'hourly' | 'daily' | 'monthly'>('daily')
   
   const { toast } = useToast()
 
@@ -132,6 +133,51 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
   const filteredQuotas = selectedTierFilter === 'all' 
     ? quotas 
     : quotas.filter(quota => quota.tier_id === selectedTierFilter)
+
+  // Aggregate usage data by time frame
+  const getAggregatedUsage = () => {
+    const aggregated = new Map()
+    
+    usage.forEach((item) => {
+      let key = ''
+      let dateLabel = ''
+      
+      const itemDate = new Date(item.date)
+      
+      switch (usageTimeFrame) {
+        case 'hourly':
+          key = `${item.date}-${item.hour}-${item.user_id}-${item.model_id}`
+          dateLabel = `${itemDate.toLocaleDateString()} ${item.hour}:00`
+          break
+        case 'daily':
+          const dailyKey = item.date
+          key = `${dailyKey}-${item.user_id}-${item.model_id}`
+          dateLabel = itemDate.toLocaleDateString()
+          break
+        case 'monthly':
+          const monthlyKey = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`
+          key = `${monthlyKey}-${item.user_id}-${item.model_id}`
+          dateLabel = `${itemDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+          break
+      }
+      
+      if (aggregated.has(key)) {
+        aggregated.get(key).images_generated += item.images_generated
+      } else {
+        aggregated.set(key, {
+          ...item,
+          dateLabel,
+          images_generated: item.images_generated
+        })
+      }
+    })
+    
+    return Array.from(aggregated.values()).sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+  }
+
+  const aggregatedUsage = getAggregatedUsage()
 
   useEffect(() => {
     loadUsageData()
@@ -866,7 +912,7 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
         <TabsContent value="usage" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5" />
@@ -876,34 +922,52 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                     Monitor real-time usage across all users and models
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={refreshUsageData}
-                  disabled={refreshingUsage}
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200"
-                >
-                  {refreshingUsage ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  <span className="ml-2 hidden sm:inline">
-                    {refreshingUsage ? "Refreshing..." : "Refresh"}
-                  </span>
-                </Button>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <Label htmlFor="usage-timeframe" className="text-sm font-medium whitespace-nowrap">View:</Label>
+                    <Select
+                      value={usageTimeFrame}
+                      onValueChange={(value: 'hourly' | 'daily' | 'monthly') => setUsageTimeFrame(value)}
+                    >
+                      <SelectTrigger className="w-full sm:w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={refreshUsageData}
+                    disabled={refreshingUsage}
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200"
+                  >
+                    {refreshingUsage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    <span className="ml-2 hidden sm:inline">
+                      {refreshingUsage ? "Refreshing..." : "Refresh"}
+                    </span>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               {/* Mobile Card View */}
               <div className="block sm:hidden space-y-3">
-                {usage.slice(0, 50).length === 0 ? (
+                {aggregatedUsage.slice(0, 50).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No usage data available
                   </div>
                 ) : (
-                  usage.slice(0, 50).map((item) => (
-                    <Card key={item.id} className="p-4">
+                  aggregatedUsage.slice(0, 50).map((item, index) => (
+                    <Card key={`${item.user_id}-${item.model_id}-${item.date}-${index}`} className="p-4">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
@@ -920,9 +984,10 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                             <p className="font-medium">{item.image_models.display_name}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Date & Time</p>
-                            <p className="font-medium">{new Date(item.date).toLocaleDateString()}</p>
-                            <p className="text-xs text-muted-foreground">{item.hour}:00</p>
+                            <p className="text-xs text-muted-foreground">
+                              {usageTimeFrame === 'hourly' ? 'Date & Hour' : usageTimeFrame === 'daily' ? 'Date' : 'Month'}
+                            </p>
+                            <p className="font-medium">{item.dateLabel}</p>
                           </div>
                         </div>
                       </div>
@@ -939,13 +1004,14 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                       <TableHead>User</TableHead>
                       <TableHead>Model</TableHead>
                       <TableHead>Images Generated</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Hour</TableHead>
+                      <TableHead>
+                        {usageTimeFrame === 'hourly' ? 'Date & Hour' : usageTimeFrame === 'daily' ? 'Date' : 'Month'}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usage.slice(0, 50).map((item) => (
-                      <TableRow key={item.id}>
+                    {aggregatedUsage.slice(0, 50).map((item, index) => (
+                      <TableRow key={`${item.user_id}-${item.model_id}-${item.date}-${index}`}>
                         <TableCell>
                           <div>
                             <div className="font-medium">{item.profiles.full_name || 'Unknown'}</div>
@@ -956,8 +1022,7 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
                         <TableCell>
                           <Badge variant="outline">{item.images_generated}</Badge>
                         </TableCell>
-                        <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{item.hour}:00</TableCell>
+                        <TableCell>{item.dateLabel}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

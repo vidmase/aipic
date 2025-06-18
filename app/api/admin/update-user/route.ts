@@ -36,11 +36,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update user premium status
+    // Update user premium status and tier
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ 
         is_premium: isPremium,
+        user_tier: isPremium ? 'premium' : 'free',
         updated_at: new Date().toISOString()
       })
       .eq("id", userId)

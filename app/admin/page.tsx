@@ -76,8 +76,6 @@ export default async function AdminPage() {
     `)
   ])
 
-
-
   const adminData = {
     tiers: tiersResult.data || [],
     models: modelsResult.data || [],

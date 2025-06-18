@@ -1105,7 +1105,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Zap className="w-4 h-4 text-green-600" />
                                           <span className="font-semibold">Fast SDXL</span>
-                                          <span className="text-green-700 ml-2">$0.0025/image</span>
+                                          {!isFreeUser && <span className="text-green-700 ml-2">$0.0025/image</span>}
                                           {!isModelAccessible("fal-ai/fast-sdxl") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1113,7 +1113,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <ImageIcon className="w-4 h-4 text-yellow-500" />
                                           <span className="font-semibold">FLUX Dev</span>
-                                          <span className="text-yellow-600 ml-2">$0.025/megapixel</span>
+                                          {!isFreeUser && <span className="text-yellow-600 ml-2">$0.025/megapixel</span>}
                                           {!isModelAccessible("fal-ai/flux/dev") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1121,8 +1121,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Rocket className="w-4 h-4 text-pink-600" />
                                           <span className="font-semibold">FLUX Pro Ultra</span>
-                                          <span className="text-pink-700 ml-2">$0.06/image</span>
-                                          <span className="text-orange-500 ml-1">$0.04/standard</span>
+                                          {!isFreeUser && (
+                                            <>
+                                              <span className="text-pink-700 ml-2">$0.06/image</span>
+                                              <span className="text-orange-500 ml-1">$0.04/standard</span>
+                                            </>
+                                          )}
                                           {!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1130,7 +1134,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <PenTool className="w-4 h-4 text-blue-500" />
                                           <span className="font-semibold">Ideogram v2</span>
-                                          <span className="text-blue-600 ml-2">$0.08/image</span>
+                                          {!isFreeUser && <span className="text-blue-600 ml-2">$0.08/image</span>}
                                           {!isModelAccessible("fal-ai/ideogram/v2") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1145,8 +1149,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Palette className="w-4 h-4 text-purple-700" />
                                           <span className="font-semibold">Recraft V3</span>
-                                          <span className="text-purple-700 ml-2">$0.04/image</span>
-                                          <span className="text-purple-400 ml-1">$0.08/vector</span>
+                                          {!isFreeUser && (
+                                            <>
+                                              <span className="text-purple-700 ml-2">$0.04/image</span>
+                                              <span className="text-purple-400 ml-1">$0.08/vector</span>
+                                            </>
+                                          )}
                                           {!isModelAccessible("fal-ai/recraft-v3") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1154,7 +1162,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Brain className="w-4 h-4 text-indigo-500" />
                                           <span className="font-semibold">Stable Diffusion 3.5 Large</span>
-                                          <span className="text-indigo-600 ml-2">$0.065/image</span>
+                                          {!isFreeUser && <span className="text-indigo-600 ml-2">$0.065/image</span>}
                                           {!isModelAccessible("fal-ai/stable-diffusion-v35-large") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1162,7 +1170,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Rocket className="w-4 h-4 text-cyan-600" />
                                           <span className="font-semibold">HiDream I1 Fast</span>
-                                          <span className="text-cyan-700 ml-2">$0.01/megapixel</span>
+                                          {!isFreeUser && <span className="text-cyan-700 ml-2">$0.01/megapixel</span>}
                                           {!isModelAccessible("fal-ai/hidream-i1-fast") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1170,7 +1178,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <Brain className="w-4 h-4 text-orange-600" />
                                           <span className="font-semibold">FLUX Kontext T2I</span>
-                                          <span className="text-orange-700 ml-2">$0.04/image</span>
+                                          {!isFreeUser && <span className="text-orange-700 ml-2">$0.04/image</span>}
                                           {!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1178,7 +1186,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         <span className="inline-flex items-center gap-2">
                                           <ImageIcon className="w-4 h-4 text-pink-500" />
                                           <span className="font-semibold">Imagen 4 Preview</span>
-                                          <span className="text-pink-700 ml-2">$0.05/image</span>
+                                          {!isFreeUser && <span className="text-pink-700 ml-2">$0.05/image</span>}
                                           {!isModelAccessible("fal-ai/imagen4/preview") && <Lock className="w-4 h-4 ml-2 text-gray-400" />}
                                         </span>
                                       </SelectItem>
@@ -1393,9 +1401,23 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <ImageIcon className="w-8 h-8 text-purple-600 group-hover:scale-110 transition-transform duration-300" />
                               <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
                             </div>
-                            <div className="text-3xl font-bold text-purple-600 mb-1 group-hover:scale-105 transition-transform duration-300">{images.length}</div>
-                            <div className="text-sm font-medium text-purple-700 dark:text-purple-300">Images Generated</div>
-                            <div className="text-xs text-purple-500 mt-1">+{images.filter(img => new Date(img.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length} this week</div>
+                            <div className="text-3xl font-bold text-purple-600 mb-1 group-hover:scale-105 transition-transform duration-300">
+                              {isFreeUser && quotaUsed !== null && quotaLimit !== null ? (
+                                <span>{quotaUsed} of {quotaLimit}</span>
+                              ) : (
+                                images.length
+                              )}
+                            </div>
+                            <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                              {isFreeUser && quotaUsed !== null && quotaLimit !== null ? "Daily Usage" : "Images Generated"}
+                            </div>
+                            <div className="text-xs text-purple-500 mt-1">
+                              {isFreeUser && quotaUsed !== null && quotaLimit !== null ? (
+                                `${quotaLimit - quotaUsed} remaining today`
+                              ) : (
+                                `+${images.filter(img => new Date(img.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length} this week`
+                              )}
+                            </div>
                           </div>
 
                           <div className="group p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-blue-200/50 dark:border-blue-700/50">

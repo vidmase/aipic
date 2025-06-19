@@ -111,17 +111,44 @@ export function LandingPage() {
                   </p>
                   <div className="pl-2">
                     <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       className="inline-block"
+                      animate={{
+                        boxShadow: [
+                          "0 0 0 0 rgba(147, 51, 234, 0)",
+                          "0 0 20px 3px rgba(147, 51, 234, 0.3)",
+                          "0 0 0 0 rgba(147, 51, 234, 0)"
+                        ]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
                     >
                       <Button
-                        className="h-14 px-10 font-space text-sm tracking-[0.2em] bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all duration-300 group"
+                        className="h-14 px-10 font-space text-sm tracking-[0.2em] relative overflow-hidden
+                          bg-gradient-to-r from-purple-500 via-blue-500 to-purple-500 bg-[length:200%_100%]
+                          text-white border-none shadow-xl
+                          animate-gradient-x hover:shadow-purple-500/25 hover:animate-none
+                          hover:bg-gradient-to-r hover:from-purple-600 hover:via-blue-600 hover:to-purple-600
+                          transition-all duration-300 group"
                         asChild
                       >
                         <Link href="/auth/signup" className="flex items-center gap-3">
                           START CREATING
-                          <span className="text-white/60 group-hover:translate-x-1 transition-transform">→</span>
+                          <motion.span 
+                            className="text-white/90"
+                            animate={{ x: [0, 5, 0] }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                          >
+                            →
+                          </motion.span>
                         </Link>
                       </Button>
                     </motion.div>
@@ -132,13 +159,13 @@ export function LandingPage() {
           </div>
 
           {/* Features Section - Minimal and Artistic */}
-          <div className="container mx-auto px-6 pb-32 mt-32 sm:mt-48">
+          <div className="container mx-auto pl-7 pr-6 pb-32 mt-32 sm:mt-48">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-screen-xl mx-auto"
+              className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8"
             >
               {[
                 { 
@@ -213,7 +240,7 @@ export function LandingPage() {
         <footer className="fixed bottom-0 left-0 right-0 backdrop-blur-sm bg-black/20">
           <div className="container mx-auto px-6 py-4">
             <div className="text-center font-space text-sm text-white/40 font-light tracking-wider">
-              <p>&copy; {new Date().getFullYear()} AI IMAGE STUDIO</p>
+              <p>&copy; {new Date().getFullYear()} AI IMAGE STUDIO by Vdma</p>
             </div>
           </div>
         </footer>

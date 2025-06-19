@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Download, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw } from "lucide-react"
+import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
@@ -43,10 +43,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [customDialogOpen, setCustomDialogOpen] = useState(false)
   const [customWidth, setCustomWidth] = useState(1)
   const [customHeight, setCustomHeight] = useState(1)
-  const [importDialogOpen, setImportDialogOpen] = useState(false)
-  const [importUrl, setImportUrl] = useState("")
-  const [importPrompt, setImportPrompt] = useState("")
-  const [importLoading, setImportLoading] = useState(false)
   const [expandedImage, setExpandedImage] = useState<GeneratedImage | null>(null)
   const [showFullPrompt, setShowFullPrompt] = useState(false)
   const [promptDialogOpen, setPromptDialogOpen] = useState(false)
@@ -66,6 +62,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [numImages, setNumImages] = useState(1)
   const [guidanceScale, setGuidanceScale] = useState(7.5)
   const [numSteps, setNumSteps] = useState(25)
+  const [currentModelIndex, setCurrentModelIndex] = useState(0)
   const [expandPromptFast, setExpandPromptFast] = useState(false)
   const [enableSafetyChecker, setEnableSafetyChecker] = useState(true)
   const [negativePrompt, setNegativePrompt] = useState('')
@@ -88,6 +85,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userAccessibleModels, setUserAccessibleModels] = useState<string[]>([])
   const [refreshingPermissions, setRefreshingPermissions] = useState(false)
+  const [modelPanelOpen, setModelPanelOpen] = useState(false)
   
   // Quota limit dialog state
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
@@ -288,39 +286,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     e.preventDefault()
     setAspectRatio(`${customWidth}:${customHeight}`)
     setCustomDialogOpen(false)
-  }
-
-  const handleImport = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setImportLoading(true)
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        toast({ title: "Error", description: "Not authenticated", variant: "destructive" })
-        return
-      }
-      const { error } = await supabase
-        .from("generated_images")
-        .insert({
-          user_id: user.id,
-          prompt: importPrompt || "Imported from FAL.AI",
-          model: "imported",
-          image_url: importUrl,
-          parameters: {},
-        })
-      if (error) throw error
-      toast({ title: "Imported", description: "Image imported successfully!" })
-      setImportDialogOpen(false)
-      setImportUrl("")
-      setImportPrompt("")
-      refreshImages()
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to import image", variant: "destructive" })
-    } finally {
-      setImportLoading(false)
-    }
   }
 
   // Fetch albums for the user
@@ -624,6 +589,127 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     };
   }, []);
 
+  // Available models with mobile-friendly data
+  const availableModels = [
+    {
+      id: "fal-ai/fast-sdxl",
+      name: "Fast SDXL",
+      description: "Quick generation, good quality",
+      category: "Fast & Free",
+      icon: Zap,
+      iconColor: "text-green-600",
+      bgColor: "bg-green-100",
+      price: isFreeUser ? "Free" : "$0.0025"
+    },
+    {
+      id: "fal-ai/hidream-i1-fast",
+      name: "HiDream I1 Fast", 
+      description: "Ultra-fast Asian aesthetics",
+      category: "Fast & Free",
+      icon: Rocket,
+      iconColor: "text-cyan-600", 
+      bgColor: "bg-cyan-100",
+      price: isFreeUser ? "Free" : "$0.01/MP"
+    },
+    {
+      id: "fal-ai/flux/dev",
+      name: "FLUX Dev",
+      description: "High quality, versatile",
+      category: "FLUX Models",
+      icon: ImageIcon,
+      iconColor: "text-yellow-600",
+      bgColor: "bg-yellow-100", 
+      price: "$0.025/MP"
+    },
+    {
+      id: "fal-ai/flux-pro/v1.1-ultra",
+      name: "FLUX Pro Ultra",
+      description: "Premium quality, photorealistic", 
+      category: "Premium",
+      icon: Rocket,
+      iconColor: "text-pink-600",
+      bgColor: "bg-pink-100",
+      price: "$0.04-0.06"
+    },
+    {
+      id: "fal-ai/flux-pro/kontext/text-to-image",
+      name: "FLUX Kontext T2I",
+      description: "Context-aware generation",
+      category: "Premium", 
+      icon: Brain,
+      iconColor: "text-orange-600",
+      bgColor: "bg-orange-100",
+      price: "$0.04"
+    },
+    {
+      id: "fal-ai/ideogram/v2", 
+      name: "Ideogram v2",
+      description: "Excellent text rendering",
+      category: "Text & Logos",
+      icon: PenTool,
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-100",
+      price: "$0.08"
+    },
+    {
+      id: "fal-ai/ideogram/v3",
+      name: "Ideogram v3", 
+      description: "Latest text & logo model",
+      category: "Text & Logos",
+      icon: PenTool,
+      iconColor: "text-blue-700",
+      bgColor: "bg-blue-100"
+    },
+    {
+      id: "fal-ai/recraft-v3",
+      name: "Recraft V3",
+      description: "Vector & design generation", 
+      category: "Text & Logos",
+      icon: Palette,
+      iconColor: "text-purple-600",
+      bgColor: "bg-purple-100",
+      price: "$0.04-0.08"
+    },
+    {
+      id: "fal-ai/imagen4/preview",
+      name: "Imagen 4 Preview",
+      description: "Google's latest AI model",
+      category: "Advanced",
+      icon: ImageIcon, 
+      iconColor: "text-pink-600",
+      bgColor: "bg-pink-100",
+      price: "$0.05"
+    },
+    {
+      id: "fal-ai/imagen4/preview/ultra",
+      name: "Imagen4-Ultra", 
+      description: "Ultra-high quality generation",
+      category: "Advanced",
+      icon: ImageIcon,
+      iconColor: "text-pink-700",
+      bgColor: "bg-pink-100",
+      price: "$0.08"
+    },
+    {
+      id: "fal-ai/stable-diffusion-v35-large",
+      name: "Stable Diffusion 3.5 Large",
+      description: "Open-source powerhouse",
+      category: "Advanced",
+      icon: Brain,
+      iconColor: "text-indigo-600", 
+      bgColor: "bg-indigo-100",
+      price: "$0.065"
+    }
+  ]
+
+  // Update current model index when model changes
+  useEffect(() => {
+    const modelIndex = availableModels.findIndex(m => m.id === model)
+    if (modelIndex !== -1) {
+      setCurrentModelIndex(modelIndex)
+    }
+  }, [model])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
       <div className="relative z-10">
@@ -683,13 +769,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <UserCircle className="w-4 h-4" />
                 <span>Profile</span>
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setPinDialogOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                <span>Import Image</span>
-              </Button>
               {isAdmin && (
                 <Button
                   variant="outline"
@@ -736,13 +815,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   <UserCircle className="w-4 h-4" />
                   <span>Profile</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setPinDialogOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <span>Import Image</span>
-                </Button>
                 {isAdmin && (
                   <Button
                     variant="outline"
@@ -759,32 +831,333 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         </header>
 
         <div className="container mx-auto px-2 py-4">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-            {/* Categories Sidebar - only show on Generate tab */}
+          <div className="flex gap-4">
+            {/* Model Selection Side Panel - only show on Generate tab */}
             {activeTab === "generate" && (
-              <Card className="w-full md:w-64 bg-white/90 dark:bg-gray-900/90 border-0 shadow-lg mb-4 md:mb-0">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Category</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-2">
-                    {categories.map((category) => (
-                      <label
-                        key={category}
-                        className={`flex items-center gap-3 px-2 py-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${selectedCategories.includes(category) ? 'bg-gray-200 dark:bg-gray-800 font-semibold' : ''}`}
-                      >
-                        <Checkbox
-                          checked={selectedCategories.includes(category)}
-                          onCheckedChange={checked => handleCategoryChange(category, checked)}
-                          className="rounded border-gray-400 focus:ring-2 focus:ring-blue-500"
-                        />
-                        <span>{category}</span>
-                      </label>
-                    ))}
-                    <span className="text-xs text-gray-500 italic mt-2 pl-1">More to come...</span>
+              <>
+                {/* Desktop Side Panel */}
+                <div className="hidden lg:block w-80 flex-shrink-0">
+                  <Card className="bg-white/90 dark:bg-gray-900/90 border-0 shadow-lg sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                          <Bot className="w-5 h-5 text-purple-600" />
+                          AI Models
+                        </CardTitle>
+                        {isFreeUser && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={refreshModelPermissions}
+                            disabled={refreshingPermissions}
+                            className="h-6 px-2 text-xs"
+                          >
+                            {refreshingPermissions ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                                Refreshing...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Refresh
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      {/* FOMO Header */}
+                      <div className="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800 mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                            {userAccessibleModels.length}/{availableModels.length} models
+                          </span>
+                        </div>
+                        <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
+                          Unlock All ⭐
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {!profileLoading ? (
+                        <div className="space-y-3">
+                          {/* Model List - Compact Side Panel Style */}
+                          {availableModels.map((modelOption) => {
+                            const isAccessible = isModelAccessible(modelOption.id);
+                            const isSelected = model === modelOption.id;
+                            
+                            return (
+                              <div
+                                key={modelOption.id}
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                  isAccessible
+                                    ? isSelected
+                                      ? 'border-primary bg-primary/5 shadow-md'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
+                                    : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
+                                }`}
+                                onClick={() => {
+                                  if (isAccessible) {
+                                    setModel(modelOption.id)
+                                    // Switch to generate tab and ensure category is selected
+                                    setActiveTab("generate")
+                                    if (!selectedCategories.includes("Text to Image")) {
+                                      setSelectedCategories(["Text to Image"])
+                                    }
+                                  } else {
+                                    toast({
+                                      title: "🔒 Premium Model",
+                                      description: `Upgrade to unlock ${modelOption.name}!`,
+                                      variant: "destructive",
+                                    })
+                                  }
+                                }}
+                              >
+                                {/* Premium Glow Effect */}
+                                {!isAccessible && (
+                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-lg"></div>
+                                )}
+                                
+                                {/* Model Content */}
+                                <div className="relative z-10">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                      isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
+                                    }`}>
+                                      <modelOption.icon className={`w-5 h-5 ${
+                                        isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
+                                      }`} />
+                                    </div>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between">
+                                        <h3 className={`font-semibold text-sm truncate ${
+                                          isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
+                                        }`}>
+                                          {modelOption.name}
+                                        </h3>
+                                        
+                                        {/* Badge */}
+                                        <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
+                                          isAccessible 
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                            : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                        }`}>
+                                          {isAccessible ? 'FREE' : 'PRO'}
+                                        </div>
+                                      </div>
+                                      
+                                      <p className={`text-xs mt-1 ${
+                                        isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
+                                      }`}>
+                                        {modelOption.description}
+                                      </p>
+                                      
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className={`text-xs font-medium ${
+                                          isAccessible ? 'text-primary' : 'text-purple-600 dark:text-purple-400'
+                                        }`}>
+                                          {modelOption.category}
+                                        </span>
+                                        
+                                        {isAccessible && modelOption.price && (
+                                          <span className="text-xs font-medium text-green-600">{modelOption.price}</span>
+                                        )}
+                                        
+                                        {!isAccessible && (
+                                          <Lock className="w-3 h-3 text-purple-600" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Selected Indicator */}
+                                  {isSelected && isAccessible && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          
+                          {/* Bottom FOMO Banner - Compact */}
+                          <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
+                            <div className="flex items-center justify-center gap-1 mb-2">
+                              <Sparkles className="w-4 h-4" />
+                              <span className="font-bold text-sm">Missing {availableModels.length - userAccessibleModels.length} models!</span>
+                            </div>
+                            <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
+                              Upgrade Now 🚀
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
+                          <span className="text-gray-500 text-sm">Loading models...</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Mobile Model Panel Toggle */}
+                <div className="lg:hidden fixed bottom-4 right-4 z-50">
+                  <Button
+                    onClick={() => setModelPanelOpen(true)}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg rounded-full w-14 h-14 flex items-center justify-center"
+                  >
+                    <Bot className="w-6 h-6" />
+                  </Button>
+                </div>
+
+                {/* Mobile Model Panel Overlay */}
+                {modelPanelOpen && (
+                  <div className="lg:hidden fixed inset-0 bg-black/50 z-50" onClick={() => setModelPanelOpen(false)}>
+                    <div className="absolute right-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                      <div className="p-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-lg font-bold flex items-center gap-2">
+                            <Bot className="w-5 h-5 text-purple-600" />
+                            AI Models
+                          </h2>
+                          <Button variant="ghost" size="sm" onClick={() => setModelPanelOpen(false)}>
+                            ✕
+                          </Button>
+                        </div>
+                        {/* FOMO Header Mobile */}
+                        <div className="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800 mt-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                              {userAccessibleModels.length}/{availableModels.length} models
+                            </span>
+                          </div>
+                          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
+                            Unlock All ⭐
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        {!profileLoading ? (
+                          <div className="space-y-3">
+                            {/* Same model list as desktop */}
+                            {availableModels.map((modelOption) => {
+                              const isAccessible = isModelAccessible(modelOption.id);
+                              const isSelected = model === modelOption.id;
+                              
+                              return (
+                                <div
+                                  key={modelOption.id}
+                                  className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                    isAccessible
+                                      ? isSelected
+                                        ? 'border-primary bg-primary/5 shadow-md'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
+                                      : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
+                                  }`}
+                                  onClick={() => {
+                                    if (isAccessible) {
+                                      setModel(modelOption.id)
+                                      setModelPanelOpen(false)
+                                      // Switch to generate tab and ensure category is selected
+                                      setActiveTab("generate")
+                                      if (!selectedCategories.includes("Text to Image")) {
+                                        setSelectedCategories(["Text to Image"])
+                                      }
+                                    } else {
+                                      toast({
+                                        title: "🔒 Premium Model",
+                                        description: `Upgrade to unlock ${modelOption.name}!`,
+                                        variant: "destructive",
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <div className="relative z-10">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                        isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
+                                      }`}>
+                                        <modelOption.icon className={`w-5 h-5 ${
+                                          isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
+                                        }`} />
+                                      </div>
+                                      
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                          <h3 className={`font-semibold text-sm truncate ${
+                                            isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
+                                          }`}>
+                                            {modelOption.name}
+                                          </h3>
+                                          
+                                          <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
+                                            isAccessible 
+                                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                          }`}>
+                                            {isAccessible ? 'FREE' : 'PRO'}
+                                          </div>
+                                        </div>
+                                        
+                                        <p className={`text-xs mt-1 ${
+                                          isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
+                                        }`}>
+                                          {modelOption.description}
+                                        </p>
+                                        
+                                        <div className="flex items-center justify-between mt-2">
+                                          <span className={`text-xs font-medium ${
+                                            isAccessible ? 'text-primary' : 'text-purple-600 dark:text-purple-400'
+                                          }`}>
+                                            {modelOption.category}
+                                          </span>
+                                          
+                                          {isAccessible && modelOption.price && (
+                                            <span className="text-xs font-medium text-green-600">{modelOption.price}</span>
+                                          )}
+                                          
+                                          {!isAccessible && (
+                                            <Lock className="w-3 h-3 text-purple-600" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {isSelected && isAccessible && (
+                                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            
+                            {/* Bottom FOMO Banner Mobile */}
+                            <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
+                              <div className="flex items-center justify-center gap-1 mb-2">
+                                <Sparkles className="w-4 h-4" />
+                                <span className="font-bold text-sm">Missing {availableModels.length - userAccessibleModels.length} models!</span>
+                              </div>
+                              <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
+                                Upgrade Now 🚀
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
+                            <span className="text-gray-500 text-sm">Loading models...</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </>
             )}
             {/* Main Content */}
             <div className="flex-1 w-full">
@@ -1070,235 +1443,60 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               </div>
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <Label htmlFor="model">Model</Label>
-                                  {isFreeUser && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={refreshModelPermissions}
-                                      disabled={refreshingPermissions}
-                                      className="h-6 px-2 text-xs"
-                                    >
-                                      {refreshingPermissions ? (
-                                        <>
-                                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                                          Refreshing...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <RefreshCw className="w-3 h-3 mr-1" />
-                                          Refresh
-                                        </>
-                                      )}
-                                    </Button>
-                                  )}
+                                            <div className="space-y-2">
+                <Label htmlFor="current-model">Current Model</Label>
+                {!profileLoading ? (
+                  <div className="p-3 border rounded-lg bg-primary/5 border-primary/20">
+                    <div className="flex items-center gap-3">
+                      {(() => {
+                        const currentModel = availableModels.find(m => m.id === model);
+                        if (!currentModel) return null;
+                        return (
+                          <>
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${currentModel.bgColor}`}>
+                              <currentModel.icon className={`w-5 h-5 ${currentModel.iconColor}`} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <h3 className="font-semibold text-sm">{currentModel.name}</h3>
+                                <div className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                  ACTIVE
                                 </div>
-                                {!profileLoading ? (
-                                  <Select value={model} onValueChange={setModel}>
-                                    <SelectTrigger className="h-12">
-                                      <SelectValue placeholder="Choose AI model..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="w-[400px] max-h-[500px] overflow-y-auto">
-                                      {/* Fast & Efficient Models */}
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                        Fast & Budget-Friendly
-                                      </div>
-                                      <SelectItem value="fal-ai/fast-sdxl" disabled={!isModelAccessible("fal-ai/fast-sdxl")} title={!isModelAccessible("fal-ai/fast-sdxl") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Zap className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Fast SDXL</div>
-                                              <div className="text-xs text-gray-500">Quick generation, good quality</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-green-700 font-medium">$0.0025</span>}
-                                            {!isModelAccessible("fal-ai/fast-sdxl") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-                                      
-                                      <SelectItem value="fal-ai/hidream-i1-fast" disabled={!isModelAccessible("fal-ai/hidream-i1-fast")} title={!isModelAccessible("fal-ai/hidream-i1-fast") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Rocket className="w-4 h-4 text-cyan-600 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">HiDream I1 Fast</div>
-                                              <div className="text-xs text-gray-500">Ultra-fast Asian aesthetics</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-cyan-700 font-medium">$0.01/MP</span>}
-                                            {!isModelAccessible("fal-ai/hidream-i1-fast") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      {/* Premium FLUX Models */}
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
-                                        FLUX Models
-                                      </div>
-                                      <SelectItem value="fal-ai/flux/dev" disabled={!isModelAccessible("fal-ai/flux/dev")} title={!isModelAccessible("fal-ai/flux/dev") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <ImageIcon className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">FLUX Dev</div>
-                                              <div className="text-xs text-gray-500">High quality, versatile</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-yellow-600 font-medium">$0.025/MP</span>}
-                                            {!isModelAccessible("fal-ai/flux/dev") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/flux-pro/v1.1-ultra" disabled={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra")} title={!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Rocket className="w-4 h-4 text-pink-600 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">FLUX Pro Ultra</div>
-                                              <div className="text-xs text-gray-500">Premium quality, photorealistic</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.04-0.06</span>}
-                                            {!isModelAccessible("fal-ai/flux-pro/v1.1-ultra") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/flux-pro/kontext/text-to-image" disabled={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image")} title={!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Brain className="w-4 h-4 text-orange-600 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">FLUX Kontext T2I</div>
-                                              <div className="text-xs text-gray-500">Context-aware generation</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-orange-700 font-medium">$0.04</span>}
-                                            {!isModelAccessible("fal-ai/flux-pro/kontext/text-to-image") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      {/* Text & Logo Models */}
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
-                                        Text & Logo Generation
-                                      </div>
-                                      <SelectItem value="fal-ai/ideogram/v2" disabled={!isModelAccessible("fal-ai/ideogram/v2")} title={!isModelAccessible("fal-ai/ideogram/v2") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <PenTool className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Ideogram v2</div>
-                                              <div className="text-xs text-gray-500">Excellent text rendering</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-blue-600 font-medium">$0.08</span>}
-                                            {!isModelAccessible("fal-ai/ideogram/v2") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/ideogram/v3" disabled={!isModelAccessible("fal-ai/ideogram/v3")} title={!isModelAccessible("fal-ai/ideogram/v3") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <PenTool className="w-4 h-4 text-blue-700 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Ideogram v3</div>
-                                              <div className="text-xs text-gray-500">Latest text & logo model</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isModelAccessible("fal-ai/ideogram/v3") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/recraft-v3" disabled={!isModelAccessible("fal-ai/recraft-v3")} title={!isModelAccessible("fal-ai/recraft-v3") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Palette className="w-4 h-4 text-purple-700 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Recraft V3</div>
-                                              <div className="text-xs text-gray-500">Vector & design generation</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-purple-700 font-medium">$0.04-0.08</span>}
-                                            {!isModelAccessible("fal-ai/recraft-v3") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      {/* Google & Advanced Models */}
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t mt-2 pt-3">
-                                        Advanced Models
-                                      </div>
-                                      <SelectItem value="fal-ai/imagen4/preview" disabled={!isModelAccessible("fal-ai/imagen4/preview")} title={!isModelAccessible("fal-ai/imagen4/preview") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <ImageIcon className="w-4 h-4 text-pink-500 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Imagen 4 Preview</div>
-                                              <div className="text-xs text-gray-500">Google's latest AI model</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.05</span>}
-                                            {!isModelAccessible("fal-ai/imagen4/preview") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/imagen4/preview/ultra" disabled={!isModelAccessible("fal-ai/imagen4/preview/ultra")} title={!isModelAccessible("fal-ai/imagen4/preview/ultra") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <ImageIcon className="w-4 h-4 text-pink-600 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Imagen4-Ultra</div>
-                                              <div className="text-xs text-gray-500">Ultra-high quality generation</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-pink-700 font-medium">$0.08</span>}
-                                            {!isModelAccessible("fal-ai/imagen4/preview/ultra") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-
-                                      <SelectItem value="fal-ai/stable-diffusion-v35-large" disabled={!isModelAccessible("fal-ai/stable-diffusion-v35-large")} title={!isModelAccessible("fal-ai/stable-diffusion-v35-large") ? "Upgrade to unlock" : ""}>
-                                        <div className="flex items-center justify-between w-full py-1">
-                                          <div className="flex items-center gap-3">
-                                            <Brain className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                                            <div>
-                                              <div className="font-semibold">Stable Diffusion 3.5 Large</div>
-                                              <div className="text-xs text-gray-500">Open-source powerhouse</div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {!isFreeUser && <span className="text-xs text-indigo-600 font-medium">$0.065</span>}
-                                            {!isModelAccessible("fal-ai/stable-diffusion-v35-large") && <Lock className="w-4 h-4 text-gray-400" />}
-                                          </div>
-                                        </div>
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <div className="h-10 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center px-3">
-                                    <span className="text-gray-500 text-sm">Loading models...</span>
-                                  </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{currentModel.description}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs font-medium text-primary">{currentModel.category}</span>
+                                {currentModel.price && (
+                                  <span className="text-xs font-medium text-green-600">{currentModel.price}</span>
                                 )}
                               </div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-primary/10">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full text-primary hover:bg-primary/10"
+                        onClick={() => {
+                          setModelPanelOpen(true)
+                          // On mobile, this will open the model panel
+                          // On desktop, the panel is already visible
+                        }}
+                      >
+                        <Bot className="w-4 h-4 mr-2" />
+                        Choose Different Model
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-20 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
+                    <span className="text-gray-500 text-sm">Loading current model...</span>
+                  </div>
+                )}
+              </div>
 
                               <div className="space-y-2">
                                 <Label htmlFor="aspectRatio">Aspect Ratio</Label>
@@ -1573,7 +1771,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
                           <Button
                             variant="outline"
                             className="h-16 flex flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 transition-all duration-300"
@@ -1597,14 +1795,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           >
                             <Folder className="w-5 h-5 text-green-600" />
                             <span className="text-sm">Albums</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="h-16 flex flex-col gap-2 hover:bg-orange-50 hover:border-orange-300 transition-all duration-300"
-                            onClick={() => setPinDialogOpen(true)}
-                          >
-                            <Download className="w-5 h-5 text-orange-600" />
-                            <span className="text-sm">Import</span>
                           </Button>
                         </div>
                       </div>
@@ -1757,192 +1947,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               </div>
               <DialogFooter>
                 <Button type="submit">Set Aspect Ratio</Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancel</Button>
-                </DialogClose>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-          <DialogContent>
-            <form onSubmit={handleImport} className="space-y-4">
-              <DialogHeader>
-                <DialogTitle>Import FAL.AI Image</DialogTitle>
-                <DialogDescription>Paste the direct image URL from FAL.AI and (optionally) a prompt.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2">
-                <Label htmlFor="import-url">Image URL</Label>
-                <input
-                  id="import-url"
-                  type="url"
-                  value={importUrl}
-                  onChange={e => setImportUrl(e.target.value)}
-                  className="border rounded px-2 py-1 w-full"
-                  required
-                  placeholder="https://fal.ai/outputs/your-image.png"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="import-prompt">Prompt (optional)</Label>
-                <input
-                  id="import-prompt"
-                  type="text"
-                  value={importPrompt}
-                  onChange={e => setImportPrompt(e.target.value)}
-                  className="border rounded px-2 py-1 w-full"
-                  placeholder="Describe the image..."
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={importLoading}>{importLoading ? "Importing..." : "Import"}</Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancel</Button>
-                </DialogClose>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Full Size Image Modal */}
-        {expandedImage && (
-          <div 
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-            onClick={() => setExpandedImage(null)}
-            style={{ backdropFilter: 'blur(8px)' }}
-          >
-            <div 
-              className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <img
-                src={expandedImage.image_url || "/placeholder.svg"}
-                alt={expandedImage.prompt}
-                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                style={{
-                  maxWidth: '90vw',
-                  maxHeight: '90vh',
-                  width: 'auto',
-                  height: 'auto'
-                }}
-              />
-              
-              {/* Close button */}
-              <button
-                type="button"
-                className="absolute -top-12 -right-12 bg-white/20 hover:bg-white/30 rounded-full p-3 text-white transition-all duration-200"
-                onClick={() => setExpandedImage(null)}
-                title="Close"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              
-              {/* Download button */}
-              <button
-                type="button"
-                className="absolute -top-12 -right-24 bg-white/20 hover:bg-white/30 rounded-full p-3 text-white transition-all duration-200"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const response = await fetch(expandedImage.image_url)
-                  const blob = await response.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement("a")
-                  a.href = url
-                  a.download = `ai-image-${expandedImage.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "-")}.png`
-                  document.body.appendChild(a)
-                  a.click()
-                  window.URL.revokeObjectURL(url)
-                  document.body.removeChild(a)
-                }}
-                title="Download"
-              >
-                <Download className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Prompt Dialog */}
-        <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogTitle>Prompt</DialogTitle>
-            <div className="mb-4 whitespace-pre-line break-words text-base font-normal leading-relaxed bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-y-auto" style={{ maxHeight: '50vh' }}>
-              {promptDialogText}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                await navigator.clipboard.writeText(promptDialogText)
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1500)
-              }}
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </Button>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Image</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this image? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="destructive" onClick={async () => {
-                if (pendingDeleteImageId) {
-                  await deleteImage(pendingDeleteImageId)
-                  setPendingDeleteImageId(null)
-                  setDeleteDialogOpen(false)
-                }
-              }}>
-                Delete
-              </Button>
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-                Cancel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
-          <DialogContent>
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (pinInput === "1255") {
-                  setPinDialogOpen(false);
-                  setPinInput("");
-                  setPinError("");
-                  setImportDialogOpen(true);
-                } else {
-                  setPinError("Incorrect pin. Please try again or contact support if you need help.");
-                }
-              }}
-              className="space-y-4"
-            >
-              <DialogHeader>
-                <DialogTitle>Enter Pin Code</DialogTitle>
-                <DialogDescription>Access to import images is restricted. Please enter the 4-digit pin code to continue.</DialogDescription>
-              </DialogHeader>
-              <Input
-                type="password"
-                maxLength={4}
-                value={pinInput}
-                onChange={e => { setPinInput(e.target.value); setPinError(""); }}
-                placeholder="4-digit pin"
-                autoFocus
-                className="text-center tracking-widest text-lg"
-              />
-              {pinError && <div className="text-red-500 text-sm text-center">{pinError}</div>}
-              <DialogFooter>
-                <Button type="submit" className="w-full">Continue</Button>
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>

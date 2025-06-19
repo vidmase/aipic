@@ -215,14 +215,22 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("💥 Access control API error:", error)
-    console.error("📍 Error details:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint
-    })
+    
+    // Type-safe error handling
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorDetails: Record<string, any> = {}
+    
+    if (error && typeof error === 'object') {
+      if ('message' in error) errorDetails.message = (error as any).message
+      if ('code' in error) errorDetails.code = (error as any).code
+      if ('details' in error) errorDetails.details = (error as any).details
+      if ('hint' in error) errorDetails.hint = (error as any).hint
+    }
+    
+    console.error("📍 Error details:", errorDetails)
+    
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", details: errorMessage },
       { status: 500 }
     )
   }

@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Database } from "@/lib/supabase/types"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import PromptSuggestions from "./PromptSuggestions"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -723,9 +724,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className="flex items-center space-x-3 group cursor-pointer hover:scale-105 transition-transform duration-200"
                 title="Generate AI Image"
               >
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shadow group-hover:shadow-lg transition-shadow duration-200">
-                  <Sparkles className="w-6 h-6 text-white group-hover:rotate-12 transition-transform duration-200" />
-                </div>
+               
                 <AuroraText className="text-2xl group-hover:scale-105 transition-transform duration-200">
                   AI Image Studio
                 </AuroraText>
@@ -1253,11 +1252,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     }
                                   }}
                                 >
-                                  {improvingPrompt ? (
-                                    <span className="animate-spin"><Bot className="w-5 h-5" /></span>
-                                  ) : (
-                                    <Bot className="w-5 h-5 text-blue-500" />
-                                  )}
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>Enhance</span>
+                                    <Sparkles className="w-2 h-2 text-yellow-400" />
+                                    <span className="text-yellow-400 font-bold" style={{ fontSize: '8px' }}>AI</span>
+                                  </div>
                                 </Button>
                               </div>
                             </div>
@@ -1477,10 +1476,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     </div>
                     <div className="mt-3 pt-3 border-t border-primary/10">
                       <Button 
+                        type="button"
                         variant="ghost" 
                         size="sm" 
                         className="w-full text-primary hover:bg-primary/10"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
                           setModelPanelOpen(true)
                           // On mobile, this will open the model panel
                           // On desktop, the panel is already visible
@@ -1963,6 +1965,33 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           message={quotaDialogData.message}
           quotaInfo={quotaDialogData.quotaInfo}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Image</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this image? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (pendingDeleteImageId) {
+                    await deleteImage(pendingDeleteImageId)
+                    setPendingDeleteImageId(null)
+                  }
+                  setDeleteDialogOpen(false)
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

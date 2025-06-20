@@ -7,7 +7,7 @@ export default async function GalleryPage() {
   const supabase = createServerClient()
 
   // Get only the first 6 recent public images
-  const { data: images } = await supabase
+  const { data: rawImages } = await supabase
     .from("generated_images")
     .select(`
       id,
@@ -15,14 +15,20 @@ export default async function GalleryPage() {
       image_url,
       model,
       created_at,
-      profiles!inner(full_name)
+      profiles(full_name)
     `)
     .order("created_at", { ascending: false })
     .limit(6)
 
+  // Transform the data to match the expected type
+  const images = rawImages?.map(image => ({
+    ...image,
+    profiles: Array.isArray(image.profiles) ? image.profiles[0] : image.profiles
+  })) || []
+
   return (
     <>
-      <GalleryContent images={images || []} limited />
+      <GalleryContent images={images || []} />
       <div className="max-w-2xl mx-auto mt-12 mb-20 text-center p-8 rounded-2xl bg-gradient-to-r from-purple-100 via-blue-100 to-cyan-100 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 shadow-lg">
         <h2 className="text-2xl md:text-3xl font-bold mb-4 text-gradient bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Want to see more?</h2>
         <p className="mb-6 text-gray-700 dark:text-gray-300 text-lg">Log in or create a free account to unlock the full community gallery and discover even more inspiring AI art.</p>

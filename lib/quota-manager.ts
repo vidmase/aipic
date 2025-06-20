@@ -298,8 +298,11 @@ export class QuotaManager {
 
       if (accessibleModels) {
         for (const access of accessibleModels) {
-          const modelId = access.image_models.model_id
-          quotaStatus[modelId] = await this.checkQuota(userId, modelId)
+          const imageModels = Array.isArray(access.image_models) ? access.image_models[0] : access.image_models
+          const modelId = imageModels?.model_id
+          if (modelId) {
+            quotaStatus[modelId] = await this.checkQuota(userId, modelId)
+          }
         }
       }
 

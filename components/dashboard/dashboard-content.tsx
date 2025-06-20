@@ -396,7 +396,10 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       
       console.log('📊 Raw accessible models data:', accessibleModels)
       
-      const modelIds = accessibleModels?.map(access => access.image_models.model_id) || []
+      const modelIds = accessibleModels?.map(access => {
+        const imageModels = Array.isArray(access.image_models) ? access.image_models[0] : access.image_models
+        return imageModels?.model_id
+      }).filter(Boolean) || []
       console.log(`✅ Accessible model IDs for ${userTier}:`, modelIds)
       setUserAccessibleModels(modelIds)
       

@@ -77,7 +77,13 @@ export function GalleryContent({ images }: GalleryContentProps) {
                 className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden"
               >
                 <div className="relative aspect-square">
-                  <Image src={image.image_url || "/placeholder.svg"} alt={image.prompt} fill className="object-cover" />
+                  <Image 
+                    src={image.image_url || "/placeholder.svg"} 
+                    alt={image.prompt} 
+                    fill 
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                  />
                 </div>
                 <CardContent className="p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{image.prompt}</p>

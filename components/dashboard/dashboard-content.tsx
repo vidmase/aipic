@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2 } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,7 @@ import type { Database } from "@/lib/supabase/types"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import PromptSuggestions from "./PromptSuggestions"
+import { SmartPromptBuilder } from "./smart-prompt-builder"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 
@@ -87,6 +88,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [userAccessibleModels, setUserAccessibleModels] = useState<string[]>([])
   const [refreshingPermissions, setRefreshingPermissions] = useState(false)
   const [modelPanelOpen, setModelPanelOpen] = useState(false)
+  const [showSmartPromptBuilder, setShowSmartPromptBuilder] = useState(false)
   
   // Quota limit dialog state
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
@@ -1179,6 +1181,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 alt={images[0].prompt}
                                 fill
                                 className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 priority
                               />
                             </div>
@@ -1221,7 +1224,19 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         <CardContent>
                           <form onSubmit={generateImage} className="space-y-8">
                             <div className="space-y-4">
-                              <Label htmlFor="prompt">Prompt</Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor="prompt">Prompt</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowSmartPromptBuilder(!showSmartPromptBuilder)}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Wand2 className="w-4 h-4" />
+                                  Smart Builder
+                                </Button>
+                              </div>
                               <div className="flex items-center">
                                 <Textarea
                                   id="prompt"
@@ -1557,6 +1572,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           </form>
                         </CardContent>
                       </Card>
+
+                      {/* Smart Prompt Builder */}
+                      {showSmartPromptBuilder && (
+                        <div className="mb-6">
+                          <SmartPromptBuilder
+                            initialPrompt={prompt}
+                            onPromptChange={(newPrompt) => setPrompt(newPrompt)}
+                            onClose={() => setShowSmartPromptBuilder(false)}
+                          />
+                        </div>
+                      )}
                       {/* Latest Generated Image */}
                       {images.length > 0 && (
                         <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
@@ -1571,6 +1597,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   alt={images[0].prompt}
                                   fill
                                   className="object-cover"
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                   priority
                                 />
                               </div>
@@ -1631,6 +1658,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               alt={image.prompt}
                               fill
                               className="object-cover"
+                              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = "/placeholder.svg"
                               }}
@@ -1845,6 +1873,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   alt={image.prompt}
                                   fill
                                   className="object-cover"
+                                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = "/placeholder.svg"
                                   }}
@@ -1904,6 +1933,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 alt={album.name}
                                 fill
                                 className="object-cover"
+                                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = "/placeholder.svg"
                                 }}
@@ -1968,6 +1998,69 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           message={quotaDialogData.message}
           quotaInfo={quotaDialogData.quotaInfo}
         />
+
+        {/* Expanded Image Dialog */}
+        <Dialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
+          <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden">
+            {expandedImage && (
+              <div className="relative w-full h-full flex flex-col">
+                {/* Image Container */}
+                <div className="relative flex-1 bg-black">
+                  <Image
+                    src={expandedImage.image_url || "/placeholder.svg"}
+                    alt={expandedImage.prompt}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 80vw"
+                    priority
+                  />
+                </div>
+                
+                {/* Image Details Footer */}
+                <div className="bg-white dark:bg-gray-800 p-4 border-t">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                        {expandedImage.prompt}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>{expandedImage.model}</span>
+                        <span>{new Date(expandedImage.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => downloadImage(expandedImage.image_url, expandedImage.prompt)}
+                      >
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => shareImage(expandedImage.image_url, expandedImage.prompt)}
+                      >
+                        Share
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setPromptDialogText(expandedImage.prompt);
+                          setPromptDialogOpen(true);
+                        }}
+                      >
+                        Show Prompt
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

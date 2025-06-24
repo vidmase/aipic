@@ -22,6 +22,8 @@ import PromptSuggestions from "./PromptSuggestions"
 import { SmartPromptBuilder } from "./smart-prompt-builder"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { useTranslation } from "@/components/providers/locale-provider"
+import { LanguageSwitcher } from "@/components/ui/language-switcher"
 
 type GeneratedImage = Database["public"]["Tables"]["generated_images"]["Row"]
 
@@ -33,8 +35,9 @@ interface DashboardContentProps {
 const IMAGE_GENERATION_QUOTA_PER_DAY = 3; // Keep in sync with API
 
 export function DashboardContent({ initialImages }: DashboardContentProps) {
+  const { t } = useTranslation()
   const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState("fal-ai/ideogram/v2")
+  const [model, setModel] = useState("fal-ai/fast-sdxl")
   const [aspectRatio, setAspectRatio] = useState("1:1")
   const [loading, setLoading] = useState(false)
   const [images, setImages] = useState<GeneratedImage[]>(initialImages)
@@ -747,7 +750,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <Plus className="w-4 h-4" />
-                <span>Generate</span>
+                <span>{t('dashboard.tabs.generate')}</span>
               </Button>
               <Button
                 variant={activeTab === "history" ? "default" : "ghost"}
@@ -755,7 +758,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <History className="w-4 h-4" />
-                <span>History</span>
+                <span>{t('dashboard.tabs.history')}</span>
               </Button>
               <Button
                 variant={activeTab === "albums" ? "default" : "ghost"}
@@ -763,7 +766,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-gradient-to-r from-green-400 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <Folder className="w-4 h-4" />
-                <span>Albums</span>
+                <span>{t('dashboard.tabs.albums')}</span>
               </Button>
               <Button
                 variant={activeTab === "profile" ? "default" : "ghost"}
@@ -771,7 +774,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <UserCircle className="w-4 h-4" />
-                <span>Profile</span>
+                <span>{t('dashboard.tabs.profile')}</span>
               </Button>
               {isAdmin && (
                 <Button
@@ -780,9 +783,21 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
                 >
                   <Shield className="w-4 h-4" />
-                  <span>Admin</span>
+                  <span>{t('dashboard.tabs.admin')}</span>
                 </Button>
               )}
+              {/* Language Switcher */}
+              <LanguageSwitcher variant="ghost" size="sm" />
+              {/* Sign Out Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline">{t('dashboard.actions.logOut')}</span>
+              </Button>
             </nav>
             {/* Mobile nav */}
             {userMenuOpen && (
@@ -793,7 +808,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Generate</span>
+                  <span>{t('dashboard.tabs.generate')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "history" ? "default" : "ghost"}
@@ -801,7 +816,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <History className="w-4 h-4" />
-                  <span>History</span>
+                  <span>{t('dashboard.tabs.history')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "albums" ? "default" : "ghost"}
@@ -809,7 +824,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-gradient-to-r from-green-400 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <Folder className="w-4 h-4" />
-                  <span>Albums</span>
+                  <span>{t('dashboard.tabs.albums')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "profile" ? "default" : "ghost"}
@@ -817,7 +832,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <UserCircle className="w-4 h-4" />
-                  <span>Profile</span>
+                  <span>{t('dashboard.tabs.profile')}</span>
                 </Button>
                 {isAdmin && (
                   <Button
@@ -826,9 +841,22 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
                   >
                     <Shield className="w-4 h-4" />
-                    <span>Admin</span>
+                    <span>{t('dashboard.tabs.admin')}</span>
                   </Button>
                 )}
+                {/* Language Switcher & Sign Out - Mobile */}
+                <div className="w-full flex items-center justify-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <LanguageSwitcher variant="ghost" size="sm" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{t('dashboard.actions.logOut')}</span>
+                  </Button>
+                </div>
               </nav>
             )}
           </div>
@@ -846,7 +874,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                           <Bot className="w-5 h-5 text-purple-600" />
-                          AI Models
+                          {t('dashboard.generate.aiModels')}
                         </CardTitle>
                         {isFreeUser && (
                           <Button
@@ -859,12 +887,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             {refreshingPermissions ? (
                               <>
                                 <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                                Refreshing...
+                                {t('dashboard.generate.refreshing')}
                               </>
                             ) : (
                               <>
                                 <RefreshCw className="w-3 h-3 mr-1" />
-                                Refresh
+                                {t('dashboard.generate.refresh')}
                               </>
                             )}
                           </Button>
@@ -875,11 +903,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                           <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                            {userAccessibleModels.length}/{availableModels.length} models
+                            {t('dashboard.generate.modelsCount', { current: userAccessibleModels.length, total: availableModels.length })}
                           </span>
                         </div>
                         <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
-                          Unlock All ⭐
+                          {t('dashboard.generate.unlockAll')}
                         </Button>
                       </div>
                     </CardHeader>
@@ -911,8 +939,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     }
                                   } else {
                                     toast({
-                                      title: "🔒 Premium Model",
-                                      description: `Upgrade to unlock ${modelOption.name}!`,
+                                      title: t('dashboard.generate.premiumModel'),
+                                      description: t('dashboard.generate.upgradeToUnlock', { modelName: modelOption.name }),
                                       variant: "destructive",
                                     })
                                   }
@@ -991,16 +1019,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
                             <div className="flex items-center justify-center gap-1 mb-2">
                               <Sparkles className="w-4 h-4" />
-                              <span className="font-bold text-sm">Missing {availableModels.length - userAccessibleModels.length} models!</span>
+                              <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
                             </div>
                             <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
-                              Upgrade Now 🚀
+                              {t('dashboard.generate.upgradeNow')}
                             </Button>
                           </div>
                         </div>
                       ) : (
                         <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
-                          <span className="text-gray-500 text-sm">Loading models...</span>
+                          <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModels')}</span>
                         </div>
                       )}
                     </CardContent>
@@ -1025,7 +1053,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         <div className="flex items-center justify-between">
                           <h2 className="text-lg font-bold flex items-center gap-2">
                             <Bot className="w-5 h-5 text-purple-600" />
-                            AI Models
+                            {t('dashboard.generate.aiModels')}
                           </h2>
                           <Button variant="ghost" size="sm" onClick={() => setModelPanelOpen(false)}>
                             ✕
@@ -1036,11 +1064,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                             <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                              {userAccessibleModels.length}/{availableModels.length} models
+                              {t('dashboard.generate.modelsCount', { current: userAccessibleModels.length, total: availableModels.length })}
                             </span>
                           </div>
                           <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
-                            Unlock All ⭐
+                            {t('dashboard.generate.unlockAll')}
                           </Button>
                         </div>
                       </div>
@@ -1073,8 +1101,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       }
                                     } else {
                                       toast({
-                                        title: "🔒 Premium Model",
-                                        description: `Upgrade to unlock ${modelOption.name}!`,
+                                        title: t('dashboard.generate.premiumModel'),
+                                        description: t('dashboard.generate.upgradeToUnlock', { modelName: modelOption.name }),
                                         variant: "destructive",
                                       })
                                     }
@@ -1145,16 +1173,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
                               <div className="flex items-center justify-center gap-1 mb-2">
                                 <Sparkles className="w-4 h-4" />
-                                <span className="font-bold text-sm">Missing {availableModels.length - userAccessibleModels.length} models!</span>
+                                <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
                               </div>
                               <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
-                                Upgrade Now 🚀
+                                {t('dashboard.generate.upgradeNow')}
                               </Button>
                             </div>
                           </div>
                         ) : (
                           <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
-                            <span className="text-gray-500 text-sm">Loading models...</span>
+                            <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModels')}</span>
                           </div>
                         )}
                       </div>
@@ -1171,7 +1199,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     images.length > 0 && (
                       <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
                         <CardHeader>
-                          <CardTitle>Latest Creation</CardTitle>
+                          <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
@@ -1201,7 +1229,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   setPromptDialogOpen(true);
                                 }}
                               >
-                                Show Prompt
+                                {t('dashboard.generate.showPrompt')}
                               </Button>
                             </div>
                           </div>
@@ -1217,15 +1245,15 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 mr-1 animate-bounce-slow">
                               <Sparkles className="w-5 h-5 text-white" />
                             </span>
-                            Generate AI Image
+                            {t('dashboard.generate.title')}
                           </CardTitle>
-                          <CardDescription>Describe your vision and let AI bring it to life</CardDescription>
+                          <CardDescription>{t('dashboard.generate.description')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <form onSubmit={generateImage} className="space-y-8">
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-                                <Label htmlFor="prompt">Prompt</Label>
+                                <Label htmlFor="prompt">{t('dashboard.generate.prompt')}</Label>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -1234,13 +1262,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   className="flex items-center gap-2"
                                 >
                                   <Wand2 className="w-4 h-4" />
-                                  Smart Builder
+                                  {t('dashboard.generate.smartBuilder')}
                                 </Button>
                               </div>
                               <div className="flex items-center">
                                 <Textarea
                                   id="prompt"
-                                  placeholder="Describe the image you want to generate..."
+                                  placeholder={t('dashboard.generate.promptPlaceholder')}
                                   value={prompt}
                                   onChange={e => setPrompt(e.target.value)}
                                   required
@@ -1271,7 +1299,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   }}
                                 >
                                   <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>Enhance</span>
+                                    <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>{t('dashboard.generate.enhance')}</span>
                                     <Sparkles className="w-2 h-2 text-yellow-400" />
                                     <span className="text-yellow-400 font-bold" style={{ fontSize: '8px' }}>AI</span>
                                   </div>
@@ -1281,46 +1309,46 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             {model === 'fal-ai/fast-sdxl' && (
                               <div className="space-y-4">
                                 <div>
-                                  <Label htmlFor="image-size">Image Size</Label>
+                                  <Label htmlFor="image-size">{t('dashboard.generate.imageSize')}</Label>
                                   <Select value={imageSize} onValueChange={setImageSize}>
                                     <SelectTrigger id="image-size"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="square_hd">Square HD</SelectItem>
-                                      <SelectItem value="square">Square</SelectItem>
-                                      <SelectItem value="portrait_4_3">Portrait 4:3</SelectItem>
-                                      <SelectItem value="portrait_16_9">Portrait 16:9</SelectItem>
-                                      <SelectItem value="landscape_4_3">Landscape 4:3</SelectItem>
-                                      <SelectItem value="landscape_16_9">Landscape 16:9</SelectItem>
+                                      <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
+                                      <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
+                                      <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
+                                      <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
+                                      <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
+                                      <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label htmlFor="num-images">Number of Images</Label>
+                                  <Label htmlFor="num-images">{t('dashboard.generate.numImages')}</Label>
                                   <input type="number" min={1} max={8} value={numImages} onChange={e => setNumImages(Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
                                 </div>
                                 <div>
-                                  <Label htmlFor="guidance-scale">Guidance Scale (CFG)</Label>
+                                  <Label htmlFor="guidance-scale">{t('dashboard.generate.guidanceScale')}</Label>
                                   <input type="range" min={0} max={20} step={0.1} value={guidanceScale} onChange={e => setGuidanceScale(Number(e.target.value))} className="w-full" />
                                   <span className="text-xs ml-2">{guidanceScale}</span>
                                 </div>
                                 <div>
-                                  <Label htmlFor="num-steps">Inference Steps</Label>
+                                  <Label htmlFor="num-steps">{t('dashboard.generate.inferenceSteps')}</Label>
                                   <input type="number" min={1} max={50} value={numSteps} onChange={e => setNumSteps(Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <input type="checkbox" checked={expandPromptFast} onChange={e => setExpandPromptFast(e.target.checked)} id="expand-prompt-fast" className="accent-blue-600" />
-                                  <Label htmlFor="expand-prompt-fast">Expand Prompt</Label>
+                                  <Label htmlFor="expand-prompt-fast">{t('dashboard.generate.expandPrompt')}</Label>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <input type="checkbox" checked={enableSafetyChecker} onChange={e => setEnableSafetyChecker(e.target.checked)} id="enable-safety-checker" className="accent-blue-600" />
-                                  <Label htmlFor="enable-safety-checker">Enable Safety Checker</Label>
+                                  <Label htmlFor="enable-safety-checker">{t('dashboard.generate.enableSafetyChecker')}</Label>
                                 </div>
                                 <div>
-                                  <Label htmlFor="negative-prompt">Negative Prompt</Label>
+                                  <Label htmlFor="negative-prompt">{t('dashboard.generate.negativePrompt')}</Label>
                                   <input type="text" value={negativePrompt} onChange={e => setNegativePrompt(e.target.value)} id="negative-prompt" className="w-full border rounded px-2 py-1" />
                                 </div>
                                 <div>
-                                  <Label htmlFor="format">Format</Label>
+                                  <Label htmlFor="format">{t('dashboard.generate.format')}</Label>
                                   <Select value={format} onValueChange={setFormat}>
                                     <SelectTrigger id="format"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -1330,7 +1358,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label htmlFor="seed">Seed (optional)</Label>
+                                  <Label htmlFor="seed">{t('dashboard.generate.seed')}</Label>
                                   <input type="number" value={seed} onChange={e => setSeed(e.target.value)} id="seed" className="w-32 border rounded px-2 py-1" />
                                 </div>
                               </div>
@@ -1338,7 +1366,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             {model === 'fal-ai/ideogram/v3' && (
                               <div className="space-y-4">
                                 <div>
-                                  <Label htmlFor="num-images-ideo">Number of Images</Label>
+                                  <Label htmlFor="num-images-ideo">{t('dashboard.generate.numImages')}</Label>
                                   <input
                                     id="num-images-ideo"
                                     type="number"
@@ -1350,33 +1378,33 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="image-size-ideo">Image Size</Label>
+                                  <Label htmlFor="image-size-ideo">{t('dashboard.generate.imageSize')}</Label>
                                   <Select value={imageSize} onValueChange={setImageSize}>
                                     <SelectTrigger id="image-size-ideo"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="square_hd">Square HD</SelectItem>
-                                      <SelectItem value="square">Square</SelectItem>
-                                      <SelectItem value="portrait_4_3">Portrait 4:3</SelectItem>
-                                      <SelectItem value="portrait_16_9">Portrait 16:9</SelectItem>
-                                      <SelectItem value="landscape_4_3">Landscape 4:3</SelectItem>
-                                      <SelectItem value="landscape_16_9">Landscape 16:9</SelectItem>
+                                      <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
+                                      <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
+                                      <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
+                                      <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
+                                      <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
+                                      <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label htmlFor="style-ideo">Style</Label>
+                                  <Label htmlFor="style-ideo">{t('dashboard.generate.style')}</Label>
                                   <Select value={style} onValueChange={setStyle}>
                                     <SelectTrigger id="style-ideo"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="AUTO">Auto</SelectItem>
-                                      <SelectItem value="GENERAL">General</SelectItem>
-                                      <SelectItem value="REALISTIC">Realistic</SelectItem>
-                                      <SelectItem value="DESIGN">Design</SelectItem>
+                                      <SelectItem value="AUTO">{t('dashboard.generate.auto')}</SelectItem>
+                                      <SelectItem value="GENERAL">{t('dashboard.generate.general')}</SelectItem>
+                                      <SelectItem value="REALISTIC">{t('dashboard.generate.realistic')}</SelectItem>
+                                      <SelectItem value="DESIGN">{t('dashboard.generate.design')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label htmlFor="expand-prompt-ideo">Expand Prompt</Label>
+                                  <Label htmlFor="expand-prompt-ideo">{t('dashboard.generate.expandPrompt')}</Label>
                                   <input
                                     id="expand-prompt-ideo"
                                     type="checkbox"
@@ -1386,65 +1414,65 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="rendering-speed-ideo">Rendering Speed</Label>
+                                  <Label htmlFor="rendering-speed-ideo">{t('dashboard.generate.renderingSpeed')}</Label>
                                   <Select value={renderingSpeed} onValueChange={setRenderingSpeed}>
                                     <SelectTrigger id="rendering-speed-ideo"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="TURBO">Turbo</SelectItem>
-                                      <SelectItem value="BALANCED">Balanced</SelectItem>
-                                      <SelectItem value="QUALITY">Quality</SelectItem>
+                                      <SelectItem value="TURBO">{t('dashboard.generate.turbo')}</SelectItem>
+                                      <SelectItem value="BALANCED">{t('dashboard.generate.balanced')}</SelectItem>
+                                      <SelectItem value="QUALITY">{t('dashboard.generate.quality')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label htmlFor="seed-ideo">Seed (optional)</Label>
+                                  <Label htmlFor="seed-ideo">{t('dashboard.generate.seed')}</Label>
                                   <input
                                     id="seed-ideo"
                                     type="number"
                                     value={seed}
                                     onChange={e => setSeed(e.target.value)}
                                     className="w-32 border rounded px-2 py-1"
-                                    placeholder="Random"
+                                    placeholder={t('dashboard.generate.seedPlaceholder')}
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="negative-prompt-ideo">Negative Prompt (optional)</Label>
+                                  <Label htmlFor="negative-prompt-ideo">{t('dashboard.generate.negativePrompt')}</Label>
                                   <input
                                     id="negative-prompt-ideo"
                                     type="text"
                                     value={negativePrompt}
                                     onChange={e => setNegativePrompt(e.target.value)}
                                     className="w-full border rounded px-2 py-1"
-                                    placeholder="What to avoid..."
+                                    placeholder={t('dashboard.generate.negativePromptPlaceholder')}
                                   />
                                 </div>
                                 <div>
-                                  <Label htmlFor="style-codes-ideo">Style Codes (comma separated, optional)</Label>
+                                  <Label htmlFor="style-codes-ideo">{t('dashboard.generate.styleCodes')}</Label>
                                   <input
                                     id="style-codes-ideo"
                                     type="text"
                                     value={styleCodes || ''}
                                     onChange={e => setStyleCodes(e.target.value)}
                                     className="w-full border rounded px-2 py-1"
-                                    placeholder="e.g. 1a2b3c4d,5e6f7a8b"
+                                    placeholder={t('dashboard.generate.styleCodesPlaceholder')}
                                   />
-                                  <span className="text-xs text-gray-500">Overrides Style if provided. 8-char hex codes, comma separated.</span>
+                                  <span className="text-xs text-gray-500">{t('dashboard.generate.styleCodesHelper')}</span>
                                 </div>
                                 <div>
-                                  <Label htmlFor="color-palette-ideo">Color Palette (optional)</Label>
+                                  <Label htmlFor="color-palette-ideo">{t('dashboard.generate.colorPalette')}</Label>
                                   <Select value={colorPalette} onValueChange={setColorPalette}>
                                     <SelectTrigger id="color-palette-ideo"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="none">None</SelectItem>
-                                      <SelectItem value="EMBER">Ember</SelectItem>
-                                      <SelectItem value="FRESH">Fresh</SelectItem>
-                                      <SelectItem value="JUNGLE">Jungle</SelectItem>
-                                      <SelectItem value="MAGIC">Magic</SelectItem>
-                                      <SelectItem value="MELON">Melon</SelectItem>
-                                      <SelectItem value="MOSAIC">Mosaic</SelectItem>
-                                      <SelectItem value="PASTEL">Pastel</SelectItem>
-                                      <SelectItem value="ULTRAMARINE">Ultramarine</SelectItem>
-                                      <SelectItem value="custom">Custom (enter hex codes below)</SelectItem>
+                                      <SelectItem value="none">{t('dashboard.generate.none')}</SelectItem>
+                                      <SelectItem value="EMBER">{t('dashboard.generate.ember')}</SelectItem>
+                                      <SelectItem value="FRESH">{t('dashboard.generate.fresh')}</SelectItem>
+                                      <SelectItem value="JUNGLE">{t('dashboard.generate.jungle')}</SelectItem>
+                                      <SelectItem value="MAGIC">{t('dashboard.generate.magic')}</SelectItem>
+                                      <SelectItem value="MELON">{t('dashboard.generate.melon')}</SelectItem>
+                                      <SelectItem value="MOSAIC">{t('dashboard.generate.mosaic')}</SelectItem>
+                                      <SelectItem value="PASTEL">{t('dashboard.generate.pastel')}</SelectItem>
+                                      <SelectItem value="ULTRAMARINE">{t('dashboard.generate.ultramarine')}</SelectItem>
+                                      <SelectItem value="custom">{t('dashboard.generate.customPaletteLabel')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   {colorPalette === 'custom' && (
@@ -1453,7 +1481,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       value={customPalette}
                                       onChange={e => setCustomPalette(e.target.value)}
                                       className="w-full border rounded px-2 py-1 mt-2"
-                                      placeholder="#ff0000,#00ff00,#0000ff"
+                                      placeholder={t('dashboard.generate.customPaletteHelper')}
                                     />
                                   )}
                                 </div>
@@ -1461,7 +1489,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                <Label htmlFor="current-model">Current Model</Label>
+                <Label htmlFor="current-model">{t('dashboard.generate.currentModel')}</Label>
                 {!profileLoading ? (
                   <div className="p-3 border rounded-lg bg-primary/5 border-primary/20">
                     <div className="flex items-center gap-3">
@@ -1477,7 +1505,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <div className="flex items-center justify-between">
                                 <h3 className="font-semibold text-sm">{currentModel.name}</h3>
                                 <div className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                  ACTIVE
+                                  {t('dashboard.generate.active')}
                                 </div>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1">{currentModel.description}</p>
@@ -1507,19 +1535,19 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         }}
                       >
                         <Bot className="w-4 h-4 mr-2" />
-                        Choose Different Model
+                        {t('dashboard.generate.chooseModel')}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="h-20 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">Loading current model...</span>
+                    <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModel')}</span>
                   </div>
                 )}
               </div>
 
                               <div className="space-y-2">
-                                <Label htmlFor="aspectRatio">Aspect Ratio</Label>
+                                <Label htmlFor="aspectRatio">{t('dashboard.generate.aspectRatio')}</Label>
                                 <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
                                   <SelectTrigger>
                                     <SelectValue />
@@ -1527,37 +1555,37 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   <SelectContent>
                                     <SelectItem value="1:1">
                                       <span className="inline-flex items-center gap-2">
-                                        <Square className="w-4 h-4" /> Square (1:1)
+                                        <Square className="w-4 h-4" /> {t('dashboard.generate.squareIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="1:1_hd">
                                       <span className="inline-flex items-center gap-2">
-                                        <Square className="w-4 h-4" /> Square HD (1:1)
+                                        <Square className="w-4 h-4" /> {t('dashboard.generate.squareHdIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="3:4">
                                       <span className="inline-flex items-center gap-2">
-                                        <RectangleVertical className="w-4 h-4" /> Portrait 3:4
+                                        <RectangleVertical className="w-4 h-4" /> {t('dashboard.generate.portraitSmallIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="9:16">
                                       <span className="inline-flex items-center gap-2">
-                                        <RectangleVertical className="w-4 h-4" /> Portrait 9:16
+                                        <RectangleVertical className="w-4 h-4" /> {t('dashboard.generate.portraitLargeIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="4:3">
                                       <span className="inline-flex items-center gap-2">
-                                        <RectangleHorizontal className="w-4 h-4" /> Landscape 4:3
+                                        <RectangleHorizontal className="w-4 h-4" /> {t('dashboard.generate.landscapeSmallIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="16:9">
                                       <span className="inline-flex items-center gap-2">
-                                        <RectangleHorizontal className="w-4 h-4" /> Landscape 16:9
+                                        <RectangleHorizontal className="w-4 h-4" /> {t('dashboard.generate.landscapeLargeIcon')}
                                       </span>
                                     </SelectItem>
                                     <SelectItem value="custom">
                                       <span className="inline-flex items-center gap-2">
-                                        <Settings2 className="w-4 h-4" /> Custom
+                                        <Settings2 className="w-4 h-4" /> {t('dashboard.generate.customIcon')}
                                       </span>
                                     </SelectItem>
                                   </SelectContent>
@@ -1566,7 +1594,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             </div>
                             <div className="pt-4">
                               <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? "Generating..." : "Generate Image"}
+                                {loading ? t('dashboard.generate.generatingButton') : t('dashboard.generate.generateButton')}
                               </Button>
                             </div>
                           </form>
@@ -1587,7 +1615,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       {images.length > 0 && (
                         <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
                           <CardHeader>
-                            <CardTitle>Latest Creation</CardTitle>
+                            <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-4">
@@ -1617,7 +1645,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     setPromptDialogOpen(true);
                                   }}
                                 >
-                                  Show Prompt
+                                  {t('dashboard.generate.showPrompt')}
                                 </Button>
                               </div>
                             </div>
@@ -1631,17 +1659,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
               {activeTab === "history" && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-6">Your Generated Images</h2>
+                  <h2 className="text-2xl font-bold mb-6">{t('dashboard.history.title')}</h2>
                   {images.length === 0 ? (
                     <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-                      <CardContent className="text-center py-12">
-                        <Sparkles className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-600 dark:text-gray-400">
-                          No images generated yet. Start creating your first AI image!
-                        </p>
-                        <Button className="mt-4" onClick={() => setActiveTab("generate")}>
-                          Generate Image
-                        </Button>
+                                              <CardContent className="text-center py-12">
+                          <Sparkles className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <p className="text-gray-600 dark:text-gray-400">
+                            {t('dashboard.history.noImages')}
+                          </p>
+                          <Button className="mt-4" onClick={() => setActiveTab("generate")}>
+                            {t('dashboard.history.generateImage')}
+                          </Button>
                       </CardContent>
                     </Card>
                   ) : (
@@ -1693,7 +1721,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 setPromptDialogOpen(true);
                               }}
                             >
-                              Show Prompt
+                              {t('dashboard.generate.showPrompt')}
                             </Button>
                           </CardContent>
                         </Card>
@@ -1707,8 +1735,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <div className="max-w-4xl mx-auto">
                   <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
                     <CardHeader className="text-center bg-gradient-to-r from-purple-500/10 to-blue-500/10">
-                      <CardTitle className="text-3xl">Profile Settings</CardTitle>
-                      <CardDescription className="text-lg">Manage your account settings</CardDescription>
+                      <CardTitle className="text-3xl">{t('dashboard.profile.title')}</CardTitle>
+                      <CardDescription className="text-lg">{t('dashboard.profile.subtitle')}</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8">
                       <div className="space-y-8">
@@ -1718,13 +1746,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <User className="w-12 h-12 text-white" />
                             </div>
                             <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                              <span className="text-white text-xs font-medium">Edit Avatar</span>
+                              <span className="text-white text-xs font-medium">{t('dashboard.profile.editAvatar')}</span>
                             </div>
                           </div>
                           <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                            {userName ? `Welcome, ${userName}` : "Welcome"}
+                            {userName ? t('dashboard.profile.welcome', { name: userName }) : t('dashboard.profile.welcomeGeneric')}
                           </h3>
-                          <p className="text-gray-500 mt-1">Creative AI Artist</p>
+                          <p className="text-gray-500 mt-1">{t('dashboard.profile.creativeArtist')}</p>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1741,13 +1769,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               )}
                             </div>
                             <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                              {isFreeUser && quotaUsed !== null && quotaLimit !== null ? "Daily Usage" : "Images Generated"}
+                              {isFreeUser && quotaUsed !== null && quotaLimit !== null ? t('dashboard.profile.dailyUsage') : t('dashboard.profile.imagesGenerated')}
                             </div>
                             <div className="text-xs text-purple-500 mt-1">
                               {isFreeUser && quotaUsed !== null && quotaLimit !== null ? (
-                                `${quotaLimit - quotaUsed} remaining today`
+                                t('dashboard.profile.remaining', { count: quotaLimit - quotaUsed })
                               ) : (
-                                `+${images.filter(img => new Date(img.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length} this week`
+                                t('dashboard.profile.thisWeek', { count: images.filter(img => new Date(img.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length })
                               )}
                             </div>
                           </div>
@@ -1758,8 +1786,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
                             </div>
                             <div className="text-3xl font-bold text-blue-600 mb-1 group-hover:scale-105 transition-transform duration-300">{new Set(images.map((img) => img.model)).size}</div>
-                            <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Models Used</div>
-                            <div className="text-xs text-blue-500 mt-1">Explore more models</div>
+                            <div className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('dashboard.profile.modelsUsed')}</div>
+                            <div className="text-xs text-blue-500 mt-1">{t('dashboard.profile.exploreMore')}</div>
                           </div>
 
                           <div className="group p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-green-200/50 dark:border-green-700/50">
@@ -1768,8 +1796,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                             </div>
                             <div className="text-3xl font-bold text-green-600 mb-1 group-hover:scale-105 transition-transform duration-300">{images.length > 0 ? Math.ceil((Date.now() - new Date(images[images.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}</div>
-                            <div className="text-sm font-medium text-green-700 dark:text-green-300">Days Active</div>
-                            <div className="text-xs text-green-500 mt-1">Keep creating!</div>
+                            <div className="text-sm font-medium text-green-700 dark:text-green-300">{t('dashboard.profile.daysActive')}</div>
+                            <div className="text-xs text-green-500 mt-1">{t('dashboard.profile.keepCreating')}</div>
                           </div>
 
                           {!profileLoading && (
@@ -1791,12 +1819,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-pulse"></div>
                                   </div>
                                   <div className="text-2xl font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent mb-1 group-hover:scale-105 transition-transform duration-300 leading-tight">
-                                    UNLIMITED
+                                    {t('dashboard.profile.unlimited')}
                                   </div>
                                   <div className="text-sm font-bold bg-gradient-to-r from-yellow-700 via-pink-600 to-purple-700 bg-clip-text text-transparent">
-                                    Enjoy unlimited generations!
+                                    {t('dashboard.profile.enjoyUnlimited')}
                                   </div>
-                                  <div className="text-xs text-yellow-600 mt-1">Premium member ✨</div>
+                                  <div className="text-xs text-yellow-600 mt-1">{t('dashboard.profile.premiumMember')}</div>
                                 </>
                               )}
                             </div>
@@ -1811,7 +1839,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             onClick={() => setActiveTab("generate")}
                           >
                             <Plus className="w-5 h-5 text-purple-600" />
-                            <span className="text-sm">Create Image</span>
+                            <span className="text-sm">{t('dashboard.actions.createImage')}</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -1819,7 +1847,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             onClick={() => setActiveTab("history")}
                           >
                             <History className="w-5 h-5 text-blue-600" />
-                            <span className="text-sm">View Gallery</span>
+                            <span className="text-sm">{t('dashboard.actions.viewGallery')}</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -1827,7 +1855,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             onClick={() => setActiveTab("albums")}
                           >
                             <Folder className="w-5 h-5 text-green-600" />
-                            <span className="text-sm">Albums</span>
+                            <span className="text-sm">{t('dashboard.actions.albums')}</span>
                           </Button>
                         </div>
                       </div>
@@ -1840,7 +1868,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           <LogOut className="w-8 h-8 group-hover:rotate-12 transition-transform duration-300" />
-                          <span className="tracking-wide relative z-10">Log Out</span>
+                          <span className="tracking-wide relative z-10">{t('dashboard.actions.logOut')}</span>
                         </Button>
                       </div>
                     </CardContent>
@@ -1908,7 +1936,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     setPromptDialogOpen(true);
                                   }}
                                 >
-                                  Show Prompt
+                                  {t('dashboard.generate.showPrompt')}
                                 </Button>
                               </CardContent>
                             </Card>
@@ -1958,8 +1986,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           <DialogContent>
             <form onSubmit={handleCustomSubmit} className="space-y-4">
               <DialogHeader>
-                <DialogTitle>Custom Aspect Ratio</DialogTitle>
-                <DialogDescription>Enter your desired width and height for the aspect ratio.</DialogDescription>
+                <DialogTitle>{t('dashboard.generate.customAspectTitle')}</DialogTitle>
+                <DialogDescription>{t('dashboard.generate.customAspectDescription')}</DialogDescription>
               </DialogHeader>
               <div className="flex gap-2 items-center">
                 <input
@@ -1981,9 +2009,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 />
               </div>
               <DialogFooter>
-                <Button type="submit">Set Aspect Ratio</Button>
+                <Button type="submit">{t('dashboard.generate.setAspectRatio')}</Button>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancel</Button>
+                  <Button type="button" variant="outline">{t('dashboard.generate.cancel')}</Button>
                 </DialogClose>
               </DialogFooter>
             </form>
@@ -2035,14 +2063,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         variant="outline"
                         onClick={() => downloadImage(expandedImage.image_url, expandedImage.prompt)}
                       >
-                        Download
+                        {t('dashboard.generate.download')}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => shareImage(expandedImage.image_url, expandedImage.prompt)}
                       >
-                        Share
+                        {t('dashboard.generate.share')}
                       </Button>
                       <Button
                         size="sm"
@@ -2052,7 +2080,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           setPromptDialogOpen(true);
                         }}
                       >
-                        Show Prompt
+                        {t('dashboard.generate.showPrompt')}
                       </Button>
                     </div>
                   </div>
@@ -2066,13 +2094,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Image</AlertDialogTitle>
+              <AlertDialogTitle>{t('dashboard.generate.deleteImageTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this image? This action cannot be undone.
+                {t('dashboard.generate.deleteImageDescription')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('dashboard.generate.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
                   if (pendingDeleteImageId) {
@@ -2083,7 +2111,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 }}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Delete
+                {t('dashboard.generate.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

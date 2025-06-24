@@ -13,8 +13,10 @@ import { Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { useTranslation } from "@/components/providers/locale-provider"
 
 export function SignInForm() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +42,8 @@ export function SignInForm() {
       }
 
       toast({
-        title: "Success",
-        description: "Signed in successfully!",
+        title: t('common.success'),
+        description: t('auth.signIn.successMessage'),
       })
       router.push("/dashboard")
       router.refresh()
@@ -64,7 +66,7 @@ export function SignInForm() {
         <div>
           <Input
             type="email"
-            placeholder="Enter your email"
+            placeholder={t('auth.signIn.emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -75,7 +77,7 @@ export function SignInForm() {
         <div>
           <Input
             type="password"
-            placeholder="Enter your password"
+            placeholder={t('auth.signIn.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -107,18 +109,18 @@ export function SignInForm() {
             text-white font-medium tracking-wide transition-all duration-200
             disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? t('auth.signIn.submitButtonLoading') : t('auth.signIn.submitButton')}
         </Button>
       </motion.div>
 
       <div className="text-center">
         <p className="text-white/60 text-sm">
-          Don't have an account?{" "}
+          {t('auth.signIn.noAccount')}{" "}
           <Link 
             href="/auth/signup" 
             className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
           >
-            Sign up
+            {t('auth.signIn.signUpLink')}
           </Link>
         </p>
       </div>

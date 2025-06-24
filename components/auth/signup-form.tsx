@@ -8,8 +8,10 @@ import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { useTranslation } from "@/components/providers/locale-provider"
 
 export function SignUpForm() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
@@ -41,8 +43,8 @@ export function SignUpForm() {
       }
 
       toast({
-        title: "Success",
-        description: "Account created successfully! Please check your email to verify your account.",
+        title: t('common.success'),
+        description: t('auth.signUp.successMessage'),
       })
       router.push("/auth/signin")
     } catch (err) {
@@ -64,7 +66,7 @@ export function SignUpForm() {
         <div>
           <Input
             type="text"
-            placeholder="Enter your full name"
+            placeholder={t('auth.signUp.fullNamePlaceholder')}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
@@ -75,7 +77,7 @@ export function SignUpForm() {
         <div>
           <Input
             type="email"
-            placeholder="Enter your email"
+            placeholder={t('auth.signUp.emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -86,7 +88,7 @@ export function SignUpForm() {
         <div>
           <Input
             type="password"
-            placeholder="Create a password"
+            placeholder={t('auth.signUp.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -119,18 +121,18 @@ export function SignUpForm() {
             text-white font-medium tracking-wide transition-all duration-200
             disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {loading ? t('auth.signUp.submitButtonLoading') : t('auth.signUp.submitButton')}
         </Button>
       </motion.div>
 
       <div className="text-center">
         <p className="text-white/60 text-sm">
-          Already have an account?{" "}
+          {t('auth.signUp.hasAccount')}{" "}
           <Link 
             href="/auth/signin" 
             className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
           >
-            Sign in
+            {t('auth.signUp.signInLink')}
           </Link>
         </p>
       </div>

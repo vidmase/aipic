@@ -109,6 +109,8 @@ export const lt: EnglishMessages = {
       customIcon: "Pasirinktinis",
       generateButton: "Kurti Vaizdą",
       generatingButton: "Kuriama...",
+      editButton: "Redaguoti Vaizdą",
+      editingButton: "Redaguojama...",
       latestCreation: "Naujausias Kūrinys",
       showPrompt: "Rodyti Aprašymą",
       // Form fields for fal-ai/fast-sdxl
@@ -180,6 +182,15 @@ export const lt: EnglishMessages = {
       loadingModels: "Kraunami modeliai...",
       missingModels: "Trūksta {count} modelių!",
       upgradeNow: "Atnaujinti Dabar 🚀",
+      // SeedEdit model fields
+      referenceImage: "Atskaitos Vaizdas",
+      urlMethod: "URL",
+      uploadMethod: "Įkelti",
+      imageUrl: "Vaizdo URL",
+      imageUrlPlaceholder: "https://example.com/image.jpg",
+      uploadImage: "Įkelti Vaizdą",
+      selectedFile: "Pasirinktas failas",
+      guidanceScaleHelper: "Kontroliuoja, kaip tiksliai redagavimas seka aprašymą (0.0 = laisvas, 1.0 = griežtas)",
     },
     history: {
       title: "Jūsų Sugeneruoti Vaizdai",

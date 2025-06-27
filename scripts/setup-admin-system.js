@@ -132,6 +132,12 @@ async function setupAdminSystem() {
         display_name: 'Flux Dev',
         description: 'Development version of Flux model',
         provider: 'fal-ai'
+      },
+      {
+        model_id: 'fal-ai/bytedance/seededit/v3/edit-image',
+        display_name: 'SeedEdit V3',
+        description: 'AI-powered image editing with ByteDance SeedEdit',
+        provider: 'fal-ai'
       }
     ];
 

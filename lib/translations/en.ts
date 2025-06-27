@@ -107,6 +107,8 @@ export const en = {
       customIcon: "Custom",
       generateButton: "Generate Image",
       generatingButton: "Generating...",
+      editButton: "Edit Image",
+      editingButton: "Editing...",
       latestCreation: "Latest Creation",
       showPrompt: "Show Prompt",
       // Form fields for fal-ai/fast-sdxl
@@ -178,6 +180,15 @@ export const en = {
       loadingModels: "Loading models...",
       missingModels: "Missing {count} models!",
       upgradeNow: "Upgrade Now 🚀",
+      // SeedEdit model fields
+      referenceImage: "Reference Image",
+      urlMethod: "URL",
+      uploadMethod: "Upload",
+      imageUrl: "Image URL",
+      imageUrlPlaceholder: "https://example.com/image.jpg",
+      uploadImage: "Upload Image",
+      selectedFile: "Selected file",
+      guidanceScaleHelper: "Controls how closely the edit follows the prompt (0.0 = loose, 1.0 = strict)",
     },
     history: {
       title: "Your Generated Images",

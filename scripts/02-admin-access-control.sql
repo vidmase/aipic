@@ -87,7 +87,8 @@ INSERT INTO public.image_models (model_id, display_name, description, provider) 
   ('fal-ai/ideogram/v2', 'Ideogram v2', 'Ideogram text-to-image model v2', 'fal-ai'),
   ('fal-ai/ideogram/v3', 'Ideogram v3', 'Latest Ideogram text-to-image model', 'fal-ai'),
   ('fal-ai/flux/schnell', 'Flux Schnell', 'Fast Flux model for quick generation', 'fal-ai'),
-  ('fal-ai/flux/dev', 'Flux Dev', 'Development version of Flux model', 'fal-ai')
+  ('fal-ai/flux/dev', 'Flux Dev', 'Development version of Flux model', 'fal-ai'),
+  ('fal-ai/bytedance/seededit/v3/edit-image', 'SeedEdit V3', 'AI-powered image editing with ByteDance SeedEdit', 'fal-ai')
 ON CONFLICT (model_id) DO NOTHING;
 
 -- Set up default tier access (free tier gets limited models)
@@ -101,7 +102,8 @@ SELECT
   m.id as model_id,
   CASE 
     WHEN t.name = 'free' AND m.model_id IN ('fal-ai/fast-sdxl', 'fal-ai/ideogram/v2') THEN TRUE
-    WHEN t.name IN ('premium', 'admin') THEN TRUE
+    WHEN t.name IN ('premium', 'admin') AND m.model_id != 'fal-ai/bytedance/seededit/v3/edit-image' THEN TRUE
+    WHEN t.name IN ('premium', 'admin') AND m.model_id = 'fal-ai/bytedance/seededit/v3/edit-image' THEN TRUE
     ELSE FALSE
   END as is_enabled
 FROM (SELECT id, name FROM public.user_tiers) t

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2 } from "lucide-react"
+import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
@@ -93,6 +93,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [modelPanelOpen, setModelPanelOpen] = useState(false)
   const [showSmartPromptBuilder, setShowSmartPromptBuilder] = useState(false)
   
+  // SeedEdit model state
+  const [imageUrl, setImageUrl] = useState('')
+  const [referenceMethod, setReferenceMethod] = useState<'url' | 'upload'>('url')
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  
   // Quota limit dialog state
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
   const [quotaDialogData, setQuotaDialogData] = useState<{
@@ -112,6 +117,26 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const generateImage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!prompt.trim()) return
+
+    // Validation for SeedEdit model
+    if (model === 'fal-ai/bytedance/seededit/v3/edit-image') {
+      if (referenceMethod === 'url' && !imageUrl.trim()) {
+        toast({
+          title: "Error",
+          description: "Please provide an image URL for editing",
+          variant: "destructive",
+        })
+        return
+      }
+      if (referenceMethod === 'upload' && !uploadedFile) {
+        toast({
+          title: "Error", 
+          description: "Please upload an image file for editing",
+          variant: "destructive",
+        })
+        return
+      }
+    }
 
     // Refresh accessible models before generating to ensure latest permissions
     if (isFreeUser) {
@@ -141,7 +166,32 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
     setLoading(true)
     try {
-      const response = await fetch("/api/generate-image", {
+      let finalImageUrl = imageUrl
+
+      // Handle file upload for SeedEdit model
+      if (model === 'fal-ai/bytedance/seededit/v3/edit-image' && referenceMethod === 'upload' && uploadedFile) {
+        const formData = new FormData()
+        formData.append('file', uploadedFile)
+        
+        const uploadResponse = await fetch('/api/upload-image', {
+          method: 'POST', 
+          body: formData
+        })
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image')
+        }
+        
+        const uploadData = await uploadResponse.json()
+        finalImageUrl = uploadData.url
+      }
+
+      // Use different endpoint for SeedEdit model
+      const endpoint = model === 'fal-ai/bytedance/seededit/v3/edit-image' 
+        ? "/api/edit-image" 
+        : "/api/generate-image"
+      
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -164,6 +214,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             enable_safety_checker: enableSafetyChecker,
             negative_prompt: negativePrompt,
             format,
+            seed: seed ? Number(seed) : undefined,
+          }),
+          ...(model === 'fal-ai/bytedance/seededit/v3/edit-image' && {
+            image_url: finalImageUrl,
+            guidance_scale: guidanceScale,
             seed: seed ? Number(seed) : undefined,
           }),
         }),
@@ -708,6 +763,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       iconColor: "text-indigo-600", 
       bgColor: "bg-indigo-100",
       price: "$0.065"
+    },
+    {
+      id: "fal-ai/bytedance/seededit/v3/edit-image",
+      name: "SeedEdit V3",
+      description: "AI-powered image editing",
+      category: "Editing",
+      icon: Edit,
+      iconColor: "text-green-600",
+      bgColor: "bg-green-100",
+      price: "$0.04"
     }
   ]
 
@@ -716,6 +781,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     const modelIndex = availableModels.findIndex(m => m.id === model)
     if (modelIndex !== -1) {
       setCurrentModelIndex(modelIndex)
+    }
+    
+    // Reset guidance scale for SeedEdit model (0-1 range vs 1-20 range for other models)
+    if (model === 'fal-ai/bytedance/seededit/v3/edit-image') {
+      setGuidanceScale(0.5) // Default for SeedEdit (0-1 range)
+    } else {
+      setGuidanceScale(7.5) // Default for other models (1-20 range)
     }
   }, [model])
 
@@ -1487,6 +1559,94 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 </div>
                               </div>
                             )}
+                            {model === 'fal-ai/bytedance/seededit/v3/edit-image' && (
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="reference-method">{t('dashboard.generate.referenceImage')}</Label>
+                                  <div className="flex gap-2 mt-2">
+                                    <Button
+                                      type="button"
+                                      variant={referenceMethod === 'url' ? 'default' : 'outline'}
+                                      size="sm"
+                                      onClick={() => setReferenceMethod('url')}
+                                    >
+                                      {t('dashboard.generate.urlMethod')}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant={referenceMethod === 'upload' ? 'default' : 'outline'}
+                                      size="sm"
+                                      onClick={() => setReferenceMethod('upload')}
+                                    >
+                                      {t('dashboard.generate.uploadMethod')}
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                {referenceMethod === 'url' ? (
+                                  <div>
+                                    <Label htmlFor="image-url">{t('dashboard.generate.imageUrl')}</Label>
+                                    <Input
+                                      id="image-url"
+                                      type="url"
+                                      value={imageUrl}
+                                      onChange={(e) => setImageUrl(e.target.value)}
+                                      placeholder={t('dashboard.generate.imageUrlPlaceholder')}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <Label htmlFor="image-upload">{t('dashboard.generate.uploadImage')}</Label>
+                                    <Input
+                                      id="image-upload"
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) {
+                                          setUploadedFile(file)
+                                        }
+                                      }}
+                                      className="mt-1"
+                                    />
+                                    {uploadedFile && (
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {t('dashboard.generate.selectedFile')}: {uploadedFile.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                <div>
+                                  <Label htmlFor="guidance-scale-seededit">{t('dashboard.generate.guidanceScale')}</Label>
+                                  <input
+                                    id="guidance-scale-seededit"
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.1}
+                                    value={guidanceScale}
+                                    onChange={e => setGuidanceScale(Number(e.target.value))}
+                                    className="w-full"
+                                  />
+                                  <span className="text-xs ml-2">{guidanceScale}</span>
+                                  <p className="text-xs text-gray-500 mt-1">{t('dashboard.generate.guidanceScaleHelper')}</p>
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor="seed-seededit">{t('dashboard.generate.seed')}</Label>
+                                  <input
+                                    id="seed-seededit"
+                                    type="number"
+                                    value={seed}
+                                    onChange={e => setSeed(e.target.value)}
+                                    className="w-32 border rounded px-2 py-1"
+                                    placeholder={t('dashboard.generate.seedPlaceholder')}
+                                  />
+                                </div>
+                              </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
                 <Label htmlFor="current-model">{t('dashboard.generate.currentModel')}</Label>
@@ -1594,7 +1754,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             </div>
                             <div className="pt-4">
                               <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? t('dashboard.generate.generatingButton') : t('dashboard.generate.generateButton')}
+                                {loading 
+                                  ? (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
+                                      ? t('dashboard.generate.editingButton') 
+                                      : t('dashboard.generate.generatingButton'))
+                                  : (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
+                                      ? t('dashboard.generate.editButton') 
+                                      : t('dashboard.generate.generateButton'))
+                                }
                               </Button>
                             </div>
                           </form>

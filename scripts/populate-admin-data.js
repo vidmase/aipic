@@ -59,6 +59,13 @@ async function populateAdminData() {
           description: 'Advanced text-to-image model',
           provider: 'fal-ai',
           is_active: true
+        },
+        {
+          model_id: 'fal-ai/bytedance/seededit/v3/edit-image',
+          display_name: 'SeedEdit V3',
+          description: 'AI-powered image editing with ByteDance SeedEdit',
+          provider: 'fal-ai',
+          is_active: true
         }
       ];
       

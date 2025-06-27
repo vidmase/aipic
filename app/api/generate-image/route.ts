@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
       'fal-ai/stable-diffusion-v35-large': 'Stable Diffusion 3.5 Large',
       'fal-ai/hidream-i1-fast': 'HiDream I1 Fast',
       'fal-ai/flux-pro/kontext/text-to-image': 'FLUX Kontext T2I',
+      'fal-ai/bytedance/seededit/v3/edit-image': 'SeedEdit V3',
     }
     let albumId: string | null = null
     let albumName = modelDisplayNames[model] || model.split('/').pop() || "Uncategorized"

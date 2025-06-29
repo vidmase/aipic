@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AccessControlPanel } from "./access-control-panel"
+import { AnalyticsDashboard } from "./analytics-dashboard"
 
 interface User {
   id: string
@@ -238,22 +239,14 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
         <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
           <div className="relative">
             <div className="overflow-x-auto scrollbar-hide">
-              <TabsList className="inline-flex h-12 sm:h-10 w-full min-w-max sm:grid sm:grid-cols-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+              <TabsList className="inline-flex h-12 sm:h-10 w-full min-w-max sm:grid sm:grid-cols-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
                 <TabsTrigger value="users" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
                   <Users className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm">Users</span>
+                  <span className="text-xs sm:text-sm">User Management</span>
                 </TabsTrigger>
                 <TabsTrigger value="access" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
-                  <Shield className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm">Access</span>
-                </TabsTrigger>
-                <TabsTrigger value="quotas" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
-                  <Zap className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm">Quotas</span>
-                </TabsTrigger>
-                <TabsTrigger value="tiers" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
-                  <Crown className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm">Tiers</span>
+                  <Settings className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm">Access & Configuration</span>
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 whitespace-nowrap">
                   <TrendingUp className="w-4 h-4 shrink-0" />
@@ -373,67 +366,14 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
             </Card>
           </TabsContent>
 
-          {/* Access Control Tab */}
+          {/* Access & Configuration Tab */}
           <TabsContent value="access">
-            <AccessControlPanel initialData={adminData} defaultTab="access" />
+            <AccessControlPanel initialData={adminData} defaultTab="models" />
           </TabsContent>
 
           {/* Other tabs will be implemented in the AccessControlPanel */}
-          <TabsContent value="quotas">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  Quota Management
-                </CardTitle>
-                <CardDescription>
-                  Configure generation limits for different user tiers and models
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Quota management interface will be displayed here. This is handled by the Access Control Panel.
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="tiers">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="w-5 h-5" />
-                  User Tiers
-                </CardTitle>
-                <CardDescription>
-                  Manage user tier definitions and permissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  User tier management interface will be displayed here. This is handled by the Access Control Panel.
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="analytics">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Usage Analytics
-                </CardTitle>
-                <CardDescription>
-                  View detailed usage statistics and trends
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Analytics dashboard will be displayed here. This is handled by the Access Control Panel.
-                </div>
-              </CardContent>
-            </Card>
+            <AnalyticsDashboard />
           </TabsContent>
         </Tabs>
 

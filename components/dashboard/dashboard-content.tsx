@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit } from "lucide-react"
+import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit, Paintbrush, Eraser, RotateCcw, Undo2 } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/components/providers/locale-provider"
 import { LanguageSwitcher } from "@/components/ui/language-switcher"
+import { Slider } from "@/components/ui/slider"
 
 type GeneratedImage = Database["public"]["Tables"]["generated_images"]["Row"]
 
@@ -97,6 +98,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [imageUrl, setImageUrl] = useState('')
   const [referenceMethod, setReferenceMethod] = useState<'url' | 'upload'>('url')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null)
   
   // Quota limit dialog state
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
@@ -105,6 +107,33 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     message: string
     quotaInfo?: { used: number; limit: number; period: "hourly" | "daily" | "monthly" }
   }>({ title: "", message: "" })
+  
+  // Image editor state
+  const [editMode, setEditMode] = useState(false)
+  const [editPrompt, setEditPrompt] = useState("")
+  const [editGuidanceScale, setEditGuidanceScale] = useState(0.1) // Default to 3.5 on fal.ai scale (0.1 * 35)
+  const [inpaintStrength, setInpaintStrength] = useState(0.85) // How much to change the masked area
+  const [editLoading, setEditLoading] = useState(false)
+  const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null)
+  const [showBeforeAfter, setShowBeforeAfter] = useState(false)
+  const [editHistory, setEditHistory] = useState<Array<{id: string, prompt: string, imageUrl: string}>>([])
+  const [sliderPosition, setSliderPosition] = useState(50) // For image comparison slider
+  
+  // Inpainting state
+  const [inpaintMode, setInpaintMode] = useState(false)
+  const [brushSize, setBrushSize] = useState(20)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [maskCanvas, setMaskCanvas] = useState<HTMLCanvasElement | null>(null)
+  const [maskContext, setMaskContext] = useState<CanvasRenderingContext2D | null>(null)
+  const [imageRef, setImageRef] = useState<HTMLImageElement | null>(null)
+  
+  // Undo functionality state
+  const [lastInpaintResult, setLastInpaintResult] = useState<{
+    imageId: string
+    imageUrl: string
+    editHistoryEntry: {id: string, prompt: string, imageUrl: string}
+  } | null>(null)
+  const [showUndoButton, setShowUndoButton] = useState(false)
   
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail)
 
@@ -306,6 +335,285 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           variant: "destructive",
         })
       }
+    }
+  }
+
+  const editImage = async () => {
+    if (!expandedImage || !editPrompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a description for the edit",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setEditLoading(true)
+    try {
+      const response = await fetch("/api/edit-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: editPrompt,
+          model: 'fal-ai/bytedance/seededit/v3/edit-image',
+          image_url: expandedImage.image_url,
+          guidance_scale: editGuidanceScale,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to edit image")
+      }
+
+      // Add to edit history
+      const newEdit = {
+        id: Date.now().toString(),
+        prompt: editPrompt,
+        imageUrl: data.image.image_url
+      }
+      setEditHistory(prev => [newEdit, ...prev])
+      setEditedImageUrl(data.image.image_url)
+      
+      toast({
+        title: "Success!",
+        description: "Image edited successfully",
+      })
+    } catch (error) {
+      console.error("Error editing image:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to edit image",
+        variant: "destructive",
+      })
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const resetEditMode = () => {
+    setEditMode(false)
+    setEditPrompt("")
+    setEditedImageUrl(null)
+    setShowBeforeAfter(false)
+    setEditHistory([])
+    setSliderPosition(50)
+    setInpaintMode(false)
+    setInpaintStrength(0.85)
+    clearMask()
+    // Clear undo state
+    setLastInpaintResult(null)
+    setShowUndoButton(false)
+  }
+
+  // Initialize canvas for mask drawing
+  const initializeMaskCanvas = (imageElement: HTMLImageElement) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    canvas.width = imageElement.naturalWidth
+    canvas.height = imageElement.naturalHeight
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    setMaskCanvas(canvas)
+    setMaskContext(ctx)
+    setImageRef(imageElement)
+  }
+
+  // Clear the mask
+  const clearMask = () => {
+    if (maskContext && maskCanvas) {
+      maskContext.fillStyle = 'black'
+      maskContext.fillRect(0, 0, maskCanvas.width, maskCanvas.height)
+    }
+  }
+
+  // Convert canvas coordinates to image coordinates
+  const getImageCoordinates = (clientX: number, clientY: number, imageElement: HTMLElement) => {
+    const rect = imageElement.getBoundingClientRect()
+    const scaleX = imageRef ? imageRef.naturalWidth / rect.width : 1
+    const scaleY = imageRef ? imageRef.naturalHeight / rect.height : 1
+    
+    const x = (clientX - rect.left) * scaleX
+    const y = (clientY - rect.top) * scaleY
+    
+    return { x, y }
+  }
+
+  // Draw on mask
+  const drawOnMask = (x: number, y: number) => {
+    if (!maskContext) return
+    
+    maskContext.globalCompositeOperation = 'source-over'
+    maskContext.fillStyle = 'white'
+    maskContext.beginPath()
+    maskContext.arc(x, y, brushSize, 0, 2 * Math.PI)
+    maskContext.fill()
+  }
+
+  // Erase from mask
+  const eraseFromMask = (x: number, y: number) => {
+    if (!maskContext) return
+    
+    maskContext.globalCompositeOperation = 'source-over'
+    maskContext.fillStyle = 'black'
+    maskContext.beginPath()
+    maskContext.arc(x, y, brushSize, 0, 2 * Math.PI)
+    maskContext.fill()
+  }
+
+  // Convert mask canvas to base64
+  const getMaskDataUrl = () => {
+    return maskCanvas?.toDataURL('image/png') || ''
+  }
+
+  // Undo the last inpainting operation
+  const undoInpainting = async () => {
+    if (!lastInpaintResult) return
+
+    try {
+      setEditLoading(true)
+
+      // Remove from album_images first (if exists)
+      await supabase
+        .from('album_images')
+        .delete()
+        .eq('image_id', lastInpaintResult.imageId)
+
+      // Delete the unwanted image from database
+      const { error: deleteError } = await supabase
+        .from('generated_images')
+        .delete()
+        .eq('id', lastInpaintResult.imageId)
+
+      if (deleteError) {
+        console.error('Error deleting unwanted inpaint result:', deleteError)
+        toast({
+          title: "Warning",
+          description: "Could not remove unwanted result from database",
+          variant: "destructive",
+        })
+      }
+
+      // Remove from edit history
+      setEditHistory(prev => prev.filter(edit => edit.id !== lastInpaintResult.editHistoryEntry.id))
+      
+      // Revert to original image
+      setEditedImageUrl(expandedImage?.image_url || null)
+      
+      // Clear undo state
+      setLastInpaintResult(null)
+      setShowUndoButton(false)
+      
+      // Clear the mask so user can start fresh
+      clearMask()
+
+      toast({
+        title: "Undone",
+        description: t('dashboard.generate.undoSuccess'),
+        duration: 3000,
+      })
+    } catch (error) {
+      console.error("Error undoing inpainting:", error)
+      toast({
+        title: "Error",
+        description: "Failed to undo inpainting",
+        variant: "destructive",
+      })
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  // Perform inpainting
+  const performInpainting = async () => {
+    if (!expandedImage || !editPrompt.trim() || !maskCanvas) {
+      toast({
+        title: "Error",
+        description: t('dashboard.generate.inpaintError'),
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Clear previous undo state when starting new inpainting
+    setLastInpaintResult(null)
+    setShowUndoButton(false)
+
+    setEditLoading(true)
+    try {
+      const maskDataUrl = getMaskDataUrl()
+      
+      const response = await fetch("/api/inpaint-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: editPrompt,
+          image_url: expandedImage.image_url,
+          mask_url: maskDataUrl,
+          guidance_scale: editGuidanceScale * 35, // Convert 0-1 to 0-35 range for fal.ai
+          num_inference_steps: 28,
+          strength: inpaintStrength,
+        }),
+      })
+
+      const data = await response.json()
+      console.log('Inpainting API response:', { status: response.status, data })
+
+      if (!response.ok) {
+        console.error('Inpainting API error response:', data)
+        throw new Error(data.error || "Failed to inpaint image")
+      }
+
+      // Validate response structure
+      if (!data.image || !data.image.image_url) {
+        console.error('Invalid response structure:', data)
+        throw new Error("Invalid response: missing image data")
+      }
+
+      // Add to edit history
+      const newEdit = {
+        id: Date.now().toString(),
+        prompt: editPrompt,
+        imageUrl: data.image.image_url
+      }
+      setEditHistory(prev => [newEdit, ...prev])
+      setEditedImageUrl(data.image.image_url)
+      
+      // Store undo information
+      setLastInpaintResult({
+        imageId: data.image.id,
+        imageUrl: data.image.image_url,
+        editHistoryEntry: newEdit
+      })
+      setShowUndoButton(true)
+      
+      // Refresh albums list to show the new "Inpainted" album if it was just created
+      if (activeTab === "albums") {
+        fetchAlbums()
+      }
+
+      toast({
+        title: "Success!",
+        description: t('dashboard.generate.inpaintSuccess'),
+        duration: 5000,
+      })
+    } catch (error) {
+      console.error("Error inpainting image:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to inpaint image",
+        variant: "destructive",
+      })
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -542,6 +850,24 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     setQuotaDialogOpen(true)
   }
 
+  // Handle file upload and create preview
+  const handleFileUpload = (file: File) => {
+    setUploadedFile(file)
+    
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setUploadedFilePreview(previewUrl)
+  }
+
+  // Clean up preview URL when component unmounts or file changes
+  React.useEffect(() => {
+    return () => {
+      if (uploadedFilePreview) {
+        URL.revokeObjectURL(uploadedFilePreview)
+      }
+    }
+  }, [uploadedFilePreview])
+
   // Fetch user and quota status together to avoid race condition
   useEffect(() => {
     let channel: any = null;
@@ -653,6 +979,20 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     };
   }, []);
 
+  // Helper function to check if a model is new (within a week)
+  const isModelNew = (modelId: string) => {
+    const newModels = {
+      "fal-ai/bytedance/seededit/v3/edit-image": new Date('2024-12-19') // Set the date when model was added
+    }
+    
+    const addedDate = newModels[modelId as keyof typeof newModels]
+    if (!addedDate) return false
+    
+    const weekInMs = 7 * 24 * 60 * 60 * 1000
+    const now = new Date()
+    return (now.getTime() - addedDate.getTime()) < weekInMs
+  }
+
   // Available models with mobile-friendly data
   const availableModels = [
     {
@@ -684,6 +1024,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       iconColor: "text-yellow-600",
       bgColor: "bg-yellow-100", 
       price: "$0.025/MP"
+    },
+    {
+      id: "fal-ai/flux/schnell",
+      name: "Flux Schnell",
+      description: "Fast Flux model for quick generation",
+      category: "Fast & Free",
+      icon: Zap,
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-100",
+      price: isFreeUser ? "Free" : "$0.01/MP"
     },
     {
       id: "fal-ai/flux-pro/v1.1-ultra",
@@ -745,6 +1095,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       price: "$0.05"
     },
     {
+      id: "fal-ai/imagen4/preview/fast",
+      name: "Imagen4-preview",
+      description: "Fast version of Google's Imagen 4",
+      category: "Advanced",
+      icon: ImageIcon,
+      iconColor: "text-pink-500",
+      bgColor: "bg-pink-100",
+      price: "$0.04"
+    },
+    {
       id: "fal-ai/imagen4/preview/ultra",
       name: "Imagen4-Ultra", 
       description: "Ultra-high quality generation",
@@ -773,6 +1133,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       iconColor: "text-green-600",
       bgColor: "bg-green-100",
       price: "$0.04"
+    },
+    {
+      id: "rundiffusion-fal/juggernaut-flux-lora/inpainting",
+      name: "Juggernaut Flux Inpainting",
+      description: "AI-powered object replacement and inpainting",
+      category: "Editing",
+      icon: Edit,
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-100",
+      price: "$0.04"
     }
   ]
 
@@ -790,6 +1160,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setGuidanceScale(7.5) // Default for other models (1-20 range)
     }
   }, [model])
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
@@ -846,7 +1218,10 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <UserCircle className="w-4 h-4" />
-                <span>{t('dashboard.tabs.profile')}</span>
+                <span className="hidden lg:inline">
+                  {userName ? `Welcome, ${userName}` : t('dashboard.tabs.profile')}
+                </span>
+                <span className="lg:hidden">{t('dashboard.tabs.profile')}</span>
               </Button>
               {isAdmin && (
                 <Button
@@ -860,16 +1235,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               )}
               {/* Language Switcher */}
               <LanguageSwitcher variant="ghost" size="sm" />
-              {/* Sign Out Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSignOut}
-                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline">{t('dashboard.actions.logOut')}</span>
-              </Button>
             </nav>
             {/* Mobile nav */}
             {userMenuOpen && (
@@ -904,7 +1269,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                 >
                   <UserCircle className="w-4 h-4" />
-                  <span>{t('dashboard.tabs.profile')}</span>
+                  <span>
+                    {userName ? `Welcome, ${userName}` : t('dashboard.tabs.profile')}
+                  </span>
                 </Button>
                 {isAdmin && (
                   <Button
@@ -940,13 +1307,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             {activeTab === "generate" && (
               <>
                 {/* Desktop Side Panel */}
-                <div className="hidden lg:block w-80 flex-shrink-0">
-                  <Card className="bg-white/90 dark:bg-gray-900/90 border-0 shadow-lg sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
-                    <CardHeader className="pb-3">
+                <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
+                  <Card className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-2xl sticky top-20 max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden flex flex-col">
+                    <CardHeader className="pb-4 bg-gradient-to-br from-gray-50/80 to-white/80 dark:from-gray-800/80 dark:to-gray-900/80 border-b border-gray-200/30 dark:border-gray-700/30">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                          <Bot className="w-5 h-5 text-purple-600" />
+                        <CardTitle className="text-xl font-bold flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg">
+                            <Bot className="w-5 h-5 text-white" />
+                          </div>
+                          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                           {t('dashboard.generate.aiModels')}
+                          </span>
                         </CardTitle>
                         {isFreeUser && (
                           <Button
@@ -954,39 +1325,47 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             size="sm"
                             onClick={refreshModelPermissions}
                             disabled={refreshingPermissions}
-                            className="h-6 px-2 text-xs"
+                            className="h-8 px-3 text-xs hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200"
                           >
                             {refreshingPermissions ? (
                               <>
-                                <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                                <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
                                 {t('dashboard.generate.refreshing')}
                               </>
                             ) : (
                               <>
-                                <RefreshCw className="w-3 h-3 mr-1" />
+                                <RefreshCw className="w-3 h-3 mr-1.5" />
                                 {t('dashboard.generate.refresh')}
                               </>
                             )}
                           </Button>
                         )}
                       </div>
-                      {/* FOMO Header */}
-                      <div className="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800 mt-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                            {t('dashboard.generate.modelsCount', { current: userAccessibleModels.length, total: availableModels.length })}
+                      {/* Enhanced Stats Banner */}
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200/50 dark:border-amber-800/50 mt-4 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse shadow-sm"></div>
+                          <div>
+                            <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                              {userAccessibleModels.length} of {availableModels.length} models
                           </span>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                              Available in your plan
+                            </p>
                         </div>
-                        <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-3 py-1.5 h-auto rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-semibold"
+                        >
                           {t('dashboard.generate.unlockAll')}
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-0 px-4 flex-1 overflow-y-auto">
                       {!profileLoading ? (
-                        <div className="space-y-3">
-                          {/* Model List - Compact Side Panel Style */}
+                        <div className="space-y-2 pb-4">
+                          {/* Model List - Enhanced Desktop Style */}
                           {availableModels.map((modelOption) => {
                             const isAccessible = isModelAccessible(modelOption.id);
                             const isSelected = model === modelOption.id;
@@ -994,12 +1373,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             return (
                               <div
                                 key={modelOption.id}
-                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                className={`group relative p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
                                   isAccessible
                                     ? isSelected
-                                      ? 'border-primary bg-primary/5 shadow-md'
-                                      : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
-                                    : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
+                                      ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/40 dark:to-blue-900/40 shadow-lg ring-2 ring-purple-200 dark:ring-purple-700'
+                                      : 'border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 hover:border-purple-300 hover:shadow-md hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50 dark:hover:from-gray-800 dark:hover:to-purple-900/20'
+                                    : 'border-purple-200 bg-gradient-to-br from-purple-50/80 via-pink-50/80 to-purple-50/80 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-purple-900/20 hover:shadow-lg hover:border-purple-300'
                                 }`}
                                 onClick={() => {
                                   if (isAccessible) {
@@ -1020,82 +1399,98 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               >
                                 {/* Premium Glow Effect */}
                                 {!isAccessible && (
-                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-lg"></div>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-xl"></div>
                                 )}
                                 
                                 {/* Model Content */}
                                 <div className="relative z-10">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:shadow-lg ${
                                       isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
                                     }`}>
-                                      <modelOption.icon className={`w-5 h-5 ${
+                                      <modelOption.icon className={`w-6 h-6 transition-all duration-300 group-hover:scale-110 ${
                                         isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
                                       }`} />
                                     </div>
                                     
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center justify-between">
-                                        <h3 className={`font-semibold text-sm truncate ${
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                          <h3 className={`font-bold text-base truncate transition-colors duration-300 ${
                                           isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
                                         }`}>
                                           {modelOption.name}
                                         </h3>
                                         
-                                        {/* Badge */}
-                                        <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
+                                          {/* NEW Badge */}
+                                          {isModelNew(modelOption.id) && (
+                                            <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0 shadow-md">
+                                              NEW
+                                            </div>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Access Badge */}
+                                        <div className={`px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-2 shadow-sm transition-all duration-300 ${
                                           isAccessible 
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
                                             : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
                                         }`}>
                                           {isAccessible ? 'FREE' : 'PRO'}
                                         </div>
                                       </div>
                                       
-                                      <p className={`text-xs mt-1 ${
+                                      <p className={`text-sm leading-relaxed mb-3 ${
                                         isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
                                       }`}>
                                         {modelOption.description}
                                       </p>
                                       
-                                      <div className="flex items-center justify-between mt-2">
-                                        <span className={`text-xs font-medium ${
-                                          isAccessible ? 'text-primary' : 'text-purple-600 dark:text-purple-400'
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                            isAccessible ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
                                         }`}>
                                           {modelOption.category}
                                         </span>
                                         
-                                        {isAccessible && modelOption.price && (
-                                          <span className="text-xs font-medium text-green-600">{modelOption.price}</span>
-                                        )}
+                                          {!isAccessible && (
+                                            <Lock className="w-4 h-4 text-purple-500" />
+                                          )}
+                                        </div>
                                         
-                                        {!isAccessible && (
-                                          <Lock className="w-3 h-3 text-purple-600" />
+                                        {isAccessible && modelOption.price && (
+                                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
+                                            {modelOption.price}
+                                          </span>
                                         )}
                                       </div>
                                     </div>
                                   </div>
                                   
-                                  {/* Selected Indicator */}
-                                  {isSelected && isAccessible && (
-                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                                    </div>
-                                  )}
+
                                 </div>
                               </div>
                             )
                           })}
                           
-                          {/* Bottom FOMO Banner - Compact */}
-                          <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
-                            <div className="flex items-center justify-center gap-1 mb-2">
-                              <Sparkles className="w-4 h-4" />
-                              <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
+                          {/* Enhanced Upgrade Banner */}
+                          <div className="p-4 bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 rounded-xl text-white text-center mt-6 shadow-lg relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+                            <div className="relative z-10">
+                              <div className="flex items-center justify-center gap-2 mb-3">
+                                <Sparkles className="w-5 h-5 animate-pulse" />
+                                <span className="font-bold text-base">
+                                  Unlock {availableModels.length - userAccessibleModels.length} Premium Models
+                                </span>
                             </div>
-                            <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
+                              <p className="text-sm opacity-90 mb-3">
+                                Get access to the latest AI models and features
+                              </p>
+                              <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-sm px-4 py-2 h-auto rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
                               {t('dashboard.generate.upgradeNow')}
                             </Button>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -1192,11 +1587,20 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
                                           <h3 className={`font-semibold text-sm truncate ${
                                             isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
                                           }`}>
                                             {modelOption.name}
                                           </h3>
+                                            
+                                            {/* NEW Badge */}
+                                            {isModelNew(modelOption.id) && (
+                                              <div className="px-1.5 py-0.5 rounded text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0">
+                                                NEW
+                                              </div>
+                                            )}
+                                          </div>
                                           
                                           <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
                                             isAccessible 
@@ -1231,11 +1635,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       </div>
                                     </div>
                                     
-                                    {isSelected && isAccessible && (
-                                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                                      </div>
-                                    )}
+
                                   </div>
                                 </div>
                               )
@@ -1605,15 +2005,55 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       onChange={(e) => {
                                         const file = e.target.files?.[0]
                                         if (file) {
-                                          setUploadedFile(file)
+                                          handleFileUpload(file)
                                         }
                                       }}
                                       className="mt-1"
+                                      key={uploadedFile ? 'with-file' : 'no-file'} // Force re-render when file changes
                                     />
-                                    {uploadedFile && (
-                                      <p className="text-sm text-gray-600 mt-1">
-                                        {t('dashboard.generate.selectedFile')}: {uploadedFile.name}
-                                      </p>
+                                    {uploadedFile && uploadedFilePreview && (
+                                      <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                                        <div className="flex items-start gap-3">
+                                          <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                            <Image
+                                              src={uploadedFilePreview}
+                                              alt="Uploaded reference image"
+                                              fill
+                                              className="object-cover"
+                                              sizes="64px"
+                                            />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                              {uploadedFile.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                              ✓ {t('dashboard.generate.readyForEditing')}
+                                            </p>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setUploadedFile(null)
+                                              if (uploadedFilePreview) {
+                                                URL.revokeObjectURL(uploadedFilePreview)
+                                              }
+                                              setUploadedFilePreview(null)
+                                              // Reset the file input
+                                              const fileInput = document.getElementById('image-upload') as HTMLInputElement
+                                              if (fileInput) fileInput.value = ''
+                                            }}
+                                            className="text-gray-400 hover:text-gray-600"
+                                          >
+                                            ×
+                                          </Button>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 )}
@@ -2194,24 +2634,295 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           quotaInfo={quotaDialogData.quotaInfo}
         />
 
-        {/* Expanded Image Dialog */}
-        <Dialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
-          <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden">
+        {/* Enhanced Image Editor Dialog */}
+        <Dialog open={!!expandedImage} onOpenChange={(open) => {
+          if (!open) {
+            setExpandedImage(null)
+            resetEditMode()
+          }
+        }}>
+          <DialogContent className="max-w-7xl w-full h-[95vh] p-0 overflow-hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{editMode ? "Edit Image" : "View Image"}</DialogTitle>
+            </DialogHeader>
             {expandedImage && (
-              <div className="relative w-full h-full flex flex-col">
-                {/* Image Container */}
-                <div className="relative flex-1 bg-black">
+              <div className={`relative w-full h-full ${editMode ? 'flex flex-col lg:flex-row' : 'flex flex-col'}`}>
+                {/* Main Content Area */}
+                <div className={`flex-1 flex flex-col ${editMode ? 'lg:w-2/3' : 'w-full'}`}>
+                  {/* Header */}
+                  <div className="bg-white dark:bg-gray-800 p-3 lg:p-4 pr-12 lg:pr-16 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2 lg:gap-4">
+                      <h3 className="font-semibold text-base lg:text-lg">
+                        {editMode ? "Image Editor" : "Image Viewer"}
+                      </h3>
+                      {editMode && editedImageUrl && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowBeforeAfter(!showBeforeAfter)}
+                            className="text-xs lg:text-sm h-8 lg:h-9"
+                          >
+                            {showBeforeAfter ? "Hide" : "Compare"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!editMode && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setEditMode(true)
+                            setEditPrompt(expandedImage.prompt)
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs lg:text-sm h-8 lg:h-9"
+                        >
+                          <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                          <span className="hidden sm:inline">Edit Image</span>
+                          <span className="sm:hidden">Edit</span>
+                        </Button>
+                      )}
+                      {editMode && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={resetEditMode}
+                          className="text-xs lg:text-sm h-8 lg:h-9"
+                        >
+                          <span className="hidden sm:inline">Exit Edit Mode</span>
+                          <span className="sm:hidden">Exit</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Image Display Area */}
+                  <div className={`relative ${editMode ? 'h-48 sm:h-64 lg:flex-1' : 'flex-1'} bg-black`}>
+                    {showBeforeAfter && editMode && editedImageUrl ? (
+                      <div className="relative w-full h-full overflow-hidden">
+                        {/* Background Image (Edited) */}
+                        <div className="absolute inset-0">
+                          <Image
+                            src={editedImageUrl}
+                            alt="Edited image"
+                            fill
+                            className="object-contain"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
+                            priority
+                          />
+                        </div>
+                        
+                        {/* Overlay Image (Original) with clip-path */}
+                        <div 
+                          className="absolute inset-0"
+                          style={{
+                            clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`
+                          }}
+                        >
                   <Image
                     src={expandedImage.image_url || "/placeholder.svg"}
                     alt={expandedImage.prompt}
                     fill
                     className="object-contain"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 80vw"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
                     priority
                   />
                 </div>
                 
-                {/* Image Details Footer */}
+                        {/* Labels */}
+                        <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm z-30 pointer-events-none">
+                          Original
+                        </div>
+                        <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm z-30 pointer-events-none">
+                          Edited
+                        </div>
+
+                        {/* Interactive overlay for slider */}
+                        <div 
+                          className="absolute inset-0 cursor-ew-resize z-20"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const updatePosition = (clientX: number) => {
+                              const x = clientX - rect.left;
+                              const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                              setSliderPosition(percentage);
+                            };
+
+                            updatePosition(e.clientX);
+
+                            const handleMouseMove = (e: MouseEvent) => {
+                              updatePosition(e.clientX);
+                            };
+
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                              document.body.style.userSelect = '';
+                            };
+
+                            document.body.style.userSelect = 'none';
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const updatePosition = (clientX: number) => {
+                              const x = clientX - rect.left;
+                              const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                              setSliderPosition(percentage);
+                            };
+
+                            updatePosition(e.touches[0].clientX);
+
+                            const handleTouchMove = (e: TouchEvent) => {
+                              e.preventDefault();
+                              updatePosition(e.touches[0].clientX);
+                            };
+
+                            const handleTouchEnd = () => {
+                              document.removeEventListener('touchmove', handleTouchMove);
+                              document.removeEventListener('touchend', handleTouchEnd);
+                            };
+
+                            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                            document.addEventListener('touchend', handleTouchEnd);
+                          }}
+                        />
+
+                        {/* Slider Line and Handle */}
+                        <div 
+                          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-30 pointer-events-none"
+                          style={{ left: `${sliderPosition}%` }}
+                        >
+                          {/* Slider Handle */}
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-xl border-2 border-gray-300 flex items-center justify-center pointer-events-none">
+                            <div className="flex gap-0.5">
+                              <div className="w-0.5 h-4 bg-gray-400 rounded-full"></div>
+                              <div className="w-0.5 h-4 bg-gray-400 rounded-full"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full">
+                        <Image
+                          id="expanded-image"
+                          src={editedImageUrl || expandedImage.image_url || "/placeholder.svg"}
+                          alt={expandedImage.prompt}
+                          fill
+                          className="object-contain"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
+                          priority
+                          onLoad={(e) => {
+                            const img = e.target as HTMLImageElement
+                            setImageRef(img)
+                            if (inpaintMode) {
+                              initializeMaskCanvas(img)
+                            }
+                          }}
+                        />
+                        
+
+                        {/* Inpainting Canvas Overlay */}
+                        {inpaintMode && (
+                          <div className="absolute inset-0 z-10 pointer-events-auto">
+                            <canvas
+                              className="absolute inset-0 w-full h-full cursor-crosshair"
+                              style={{
+                                imageRendering: 'pixelated',
+                                opacity: 0.6,
+                                mixBlendMode: 'multiply'
+                              }}
+                              onMouseDown={(e) => {
+                                setIsDrawing(true)
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const img = document.querySelector('#expanded-image') as HTMLImageElement
+                                if (img) {
+                                  const { x, y } = getImageCoordinates(e.clientX, e.clientY, img)
+                                  if (e.shiftKey) {
+                                    eraseFromMask(x, y)
+                                  } else {
+                                    drawOnMask(x, y)
+                                  }
+                                }
+                              }}
+                              onMouseMove={(e) => {
+                                if (!isDrawing) return
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const img = document.querySelector('#expanded-image') as HTMLImageElement
+                                if (img) {
+                                  const { x, y } = getImageCoordinates(e.clientX, e.clientY, img)
+                                  if (e.shiftKey) {
+                                    eraseFromMask(x, y)
+                                  } else {
+                                    drawOnMask(x, y)
+                                  }
+                                }
+                              }}
+                              onMouseUp={() => setIsDrawing(false)}
+                              onMouseLeave={() => setIsDrawing(false)}
+                              onTouchStart={(e) => {
+                                e.preventDefault()
+                                setIsDrawing(true)
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const img = document.querySelector('#expanded-image') as HTMLImageElement
+                                if (img && e.touches[0]) {
+                                  const { x, y } = getImageCoordinates(e.touches[0].clientX, e.touches[0].clientY, img)
+                                  drawOnMask(x, y)
+                                }
+                              }}
+                              onTouchMove={(e) => {
+                                e.preventDefault()
+                                if (!isDrawing) return
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const img = document.querySelector('#expanded-image') as HTMLImageElement
+                                if (img && e.touches[0]) {
+                                  const { x, y } = getImageCoordinates(e.touches[0].clientX, e.touches[0].clientY, img)
+                                  drawOnMask(x, y)
+                                }
+                              }}
+                              onTouchEnd={() => setIsDrawing(false)}
+                              ref={(canvas) => {
+                                if (canvas && maskCanvas && imageRef) {
+                                  // Update canvas display to match the image dimensions
+                                  const img = imageRef
+                                  const rect = img.getBoundingClientRect()
+                                  canvas.width = rect.width
+                                  canvas.height = rect.height
+                                  
+                                  // Draw the mask onto the display canvas
+                                  const ctx = canvas.getContext('2d')
+                                  if (ctx && maskCanvas) {
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height)
+                                    ctx.globalCompositeOperation = 'source-over'
+                                    ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height)
+                                  }
+                                }
+                              }}
+                            />
+                            
+                            {/* Brush cursor indicator */}
+                            <div 
+                              className="absolute pointer-events-none border-2 border-red-500 rounded-full bg-red-500/20"
+                              style={{
+                                width: `${brushSize * 2}px`,
+                                height: `${brushSize * 2}px`,
+                                transform: 'translate(-50%, -50%)',
+                                display: 'none'
+                              }}
+                              id="brush-cursor"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Action Bar */}
+                  {!editMode && (
                 <div className="bg-white dark:bg-gray-800 p-4 border-t">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -2252,8 +2963,327 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     </div>
                   </div>
                 </div>
+                  )}
+                </div>
+
+                {/* Edit Controls Panel */}
+                {editMode && (
+                  <div className="w-full lg:w-1/3 bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l flex flex-col max-h-[50vh] lg:max-h-none lg:h-full">
+                    {/* Panel Header */}
+                    <div className="p-3 lg:p-4 border-b bg-white dark:bg-gray-800 flex-shrink-0">
+                      <div className="flex items-center justify-between mb-1 lg:mb-2">
+                        <h4 className="font-semibold text-base lg:text-lg">Edit Controls</h4>
+                        <Button
+                          variant={inpaintMode ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setInpaintMode(!inpaintMode)
+                            if (!inpaintMode && expandedImage) {
+                              // Initialize canvas when entering inpaint mode
+                              const img = document.querySelector('#expanded-image') as HTMLImageElement
+                              if (img) {
+                                initializeMaskCanvas(img)
+                              }
+                            }
+                          }}
+                          className="text-xs h-7"
+                        >
+                          <Paintbrush className="w-3 h-3 mr-1" />
+                          {inpaintMode ? t('dashboard.generate.exitPaintMode') : t('dashboard.generate.paintMode')}
+                        </Button>
+                      </div>
+                      <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">
+                        {inpaintMode 
+                          ? t('dashboard.generate.paintAreas')
+                          : "Describe the changes you want to make to this image"
+                        }
+                      </p>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 min-h-0">
+                      {/* Edit Prompt */}
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-prompt" className="text-xs lg:text-sm font-medium">
+                          Edit Description
+                        </Label>
+                        <Textarea
+                          id="edit-prompt"
+                          value={editPrompt}
+                          onChange={(e) => setEditPrompt(e.target.value)}
+                          placeholder={inpaintMode 
+                            ? "Describe what should replace the painted areas..."
+                            : "Describe what you want to change in the image..."
+                          }
+                          className="min-h-[50px] lg:min-h-[80px] resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Inpainting Controls */}
+                      {inpaintMode && (
+                        <div className="space-y-2 p-2 lg:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs lg:text-sm font-medium text-blue-900 dark:text-blue-100">
+                              {t('dashboard.generate.paintingTools')}
+                            </Label>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={clearMask}
+                                className="h-6 lg:h-7 px-2 text-xs"
+                              >
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                {t('dashboard.generate.clearMask')}
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1 lg:space-y-2">
+                            <Label className="text-xs font-medium text-blue-800 dark:text-blue-200">
+                              {t('dashboard.generate.brushSize')}: {brushSize}px
+                            </Label>
+                            <Slider
+                              value={[brushSize]}
+                              onValueChange={(value) => setBrushSize(value[0])}
+                              max={50}
+                              min={5}
+                              step={5}
+                              className="w-full"
+                            />
+                          </div>
+                          
+                          <div className="space-y-1 lg:space-y-2">
+                            <Label className="text-xs font-medium text-blue-800 dark:text-blue-200">
+                              Inpaint Strength: {inpaintStrength.toFixed(2)}
+                            </Label>
+                            <Slider
+                              value={[inpaintStrength]}
+                              onValueChange={(value) => setInpaintStrength(value[0])}
+                              max={1}
+                              min={0.1}
+                              step={0.05}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                              How much to change the painted areas
+                            </p>
+                          </div>
+                          
+                          <div className="text-xs text-blue-700 dark:text-blue-300 space-y-0.5">
+                            <p>• Click and drag to paint areas you want to replace</p>
+                            <p>• Hold Shift while painting to erase</p>
+                            <p>• Use larger brush for broad areas, smaller for details</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Guidance Scale */}
+                      <div className="space-y-2 lg:space-y-3">
+                        <Label className="text-xs lg:text-sm font-medium">
+                          Guidance Scale: {(editGuidanceScale * 35).toFixed(1)}
+                        </Label>
+                        <Slider
+                          value={[editGuidanceScale]}
+                          onValueChange={(value) => setEditGuidanceScale(value[0])}
+                          max={1}
+                          min={0}
+                          step={0.1}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Lower = more creative, Higher = follows prompt closely
+                        </p>
+                      </div>
+
+
+
+                      {/* Quick Edit Presets */}
+                      {!inpaintMode && (
+                        <div className="space-y-2 lg:space-y-3">
+                          <Label className="text-xs lg:text-sm font-medium">Quick Edits</Label>
+                          <div className="grid grid-cols-2 gap-1.5 lg:gap-2">
+                            {[
+                              "Enhance lighting",
+                              "Change to night",
+                              "Add more colors",
+                              "Make it vintage",
+                              "Add dramatic sky",
+                              "Change season"
+                            ].map((preset) => (
+                              <Button
+                                key={preset}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditPrompt(preset)}
+                                className="text-xs py-1.5 px-2 h-auto"
+                              >
+                                {preset}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Edit History */}
+                      {editHistory.length > 0 && (
+                        <div className="space-y-2 lg:space-y-3">
+                          <Label className="text-xs lg:text-sm font-medium">Edit History</Label>
+                          <div className="space-y-1.5 lg:space-y-2 max-h-32 lg:max-h-40 overflow-y-auto">
+                            {editHistory.map((edit) => (
+                              <div
+                                key={edit.id}
+                                className="p-2 bg-white dark:bg-gray-800 rounded border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                                onClick={() => setEditedImageUrl(edit.imageUrl)}
+                              >
+                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                                  {edit.prompt}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-3 lg:p-4 border-t-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 space-y-2 lg:space-y-3 flex-shrink-0 shadow-lg">
+                      {/* Visual indicator for inpaint mode */}
+                      {inpaintMode && (
+                        <div className="text-center py-1">
+                          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                            🎨 Inpaint Mode Active - Ready to Apply
+                          </span>
+                        </div>
+                      )}
+                      
+                      <Button
+                        onClick={inpaintMode ? performInpainting : editImage}
+                        disabled={editLoading || !editPrompt.trim()}
+                        className={`w-full text-white h-12 lg:h-12 text-sm font-bold transition-all duration-200 ${
+                          inpaintMode 
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800" 
+                            : "bg-purple-600 hover:bg-purple-700"
+                        }`}
+                      >
+                        {editLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            {inpaintMode ? "Processing inpainting... (may take 1-3 minutes)" : "Editing..."}
+                          </>
+                        ) : (
+                          <>
+                            {inpaintMode ? (
+                              <>
+                                <Paintbrush className="w-4 h-4 mr-2" />
+                                {t('dashboard.generate.applyInpainting')}
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 className="w-4 h-4 mr-2" />
+                                Apply Edit
+                              </>
+                            )}
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Undo Button - Show only after successful inpainting */}
+                      {showUndoButton && inpaintMode && (
+                        <Button
+                          onClick={undoInpainting}
+                          disabled={editLoading}
+                          variant="outline"
+                          className="w-full h-10 lg:h-10 text-sm font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                        >
+                          {editLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                              Undoing...
+                            </>
+                          ) : (
+                            <>
+                              <Undo2 className="w-4 h-4 mr-2" />
+                              {t('dashboard.generate.undoInpainting')}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {editedImageUrl && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadImage(editedImageUrl, editPrompt)}
+                            className="flex-1 h-8 lg:h-9 text-xs lg:text-sm"
+                          >
+                            Download
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => shareImage(editedImageUrl, editPrompt)}
+                            className="flex-1 h-8 lg:h-9 text-xs lg:text-sm"
+                          >
+                            Share
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Prompt Display Dialog */}
+        <Dialog open={promptDialogOpen} onOpenChange={setPromptDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t('dashboard.generate.promptTitle')}</DialogTitle>
+              <DialogDescription>
+                {t('dashboard.generate.promptDescription')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                  {promptDialogText}
+                </p>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(promptDialogText)
+                    setCopied(true)
+                    toast({
+                      title: t('dashboard.generate.copied'),
+                      description: t('dashboard.generate.copiedDescription'),
+                    })
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  {copied ? (
+                    <>
+                      <span>✓</span>
+                      {t('dashboard.generate.copied')}
+                    </>
+                  ) : (
+                    <>
+                      <span>📋</span>
+                      {t('dashboard.generate.copyPrompt')}
+                    </>
+                  )}
+                </Button>
+                <DialogClose asChild>
+                  <Button>{t('dashboard.generate.close')}</Button>
+                </DialogClose>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

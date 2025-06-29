@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.5.0",
     "@fal-ai/serverless-client": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@next/font": "^14.2.15",

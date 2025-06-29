@@ -426,9 +426,9 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Access Control & Quotas</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">System Configuration</h2>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Manage user tiers, model access, and generation limits
+            Manage AI models, user tiers, access permissions, and quota limits
           </p>
         </div>
       </div>

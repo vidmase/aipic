@@ -110,6 +110,7 @@ export const en = {
       editButton: "Edit Image",
       editingButton: "Editing...",
       latestCreation: "Latest Creation",
+      latestCreations: "Latest 3 Creations",
       showPrompt: "Show Prompt",
       promptTitle: "Image Prompt",
       promptDescription: "View and copy the prompt used to generate this image.",
@@ -210,6 +211,14 @@ export const en = {
       inpaintError: "Please paint areas to edit and provide a description",
       undoInpainting: "Undo Inpainting",
       undoSuccess: "Inpainting undone successfully",
+      // Advanced settings
+      advancedSettings: "Advanced Settings",
+      showAdvanced: "Show Advanced",
+      hideAdvanced: "Hide Advanced",
+      promptPlaceholderInspiring: "Describe your creative vision... ✨",
+      promptHelperText: "Be specific and descriptive for best results",
+      examplePrompts: "Example Prompts",
+      useExample: "Use this example",
     },
     history: {
       title: "Your Generated Images",

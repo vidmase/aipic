@@ -23,7 +23,7 @@ export function LanguageSwitcher({
       variant={variant} 
       size={size} 
       onClick={toggleLanguage}
-      className="w-12 h-9 p-0 font-bold text-sm bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out rounded-lg border-0"
+      className="w-12 h-9 p-0 font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out rounded-lg border-0"
     >
       {locale.toUpperCase()}
     </Button>

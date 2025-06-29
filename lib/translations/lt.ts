@@ -112,6 +112,7 @@ export const lt: EnglishMessages = {
       editButton: "Redaguoti Vaizdą",
       editingButton: "Redaguojama...",
       latestCreation: "Naujausias Kūrinys",
+      latestCreations: "Paskutiniai 3 Kūriniai",
       showPrompt: "Rodyti Aprašymą",
       promptTitle: "Vaizdo Aprašymas",
       promptDescription: "Peržiūrėkite ir nukopijuokite aprašymą, naudotą šiam vaizdui generuoti.",
@@ -212,6 +213,14 @@ export const lt: EnglishMessages = {
       inpaintError: "Prašome nuspalvinti sritis redagavimui ir pateikti aprašymą",
       undoInpainting: "Atšaukti Inpaint",
       undoSuccess: "Inpaint sėkmingai atšaukta",
+      // Advanced settings
+      advancedSettings: "Papildomi Nustatymai",
+      showAdvanced: "Rodyti Papildomus",
+      hideAdvanced: "Slėpti Papildomus",
+      promptPlaceholderInspiring: "Aprašykite savo kūrybinę viziją... ✨",
+      promptHelperText: "Būkite konkretūs ir išsamūs geriausiam rezultatui",
+      examplePrompts: "Pavyzdžiai",
+      useExample: "Naudoti šį pavyzdį",
     },
     history: {
       title: "Jūsų Sugeneruoti Vaizdai",

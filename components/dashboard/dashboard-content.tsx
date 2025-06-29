@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit, Paintbrush, Eraser, RotateCcw, Undo2 } from "lucide-react"
+import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit, Paintbrush, Eraser, RotateCcw, Undo2, ChevronDown, ChevronUp, Lightbulb, Copy } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
@@ -139,7 +139,23 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null)
   const [editingAlbumName, setEditingAlbumName] = useState("")
   
+  // Advanced settings visibility state
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
+  
+  // Example prompts state
+  const [showExamplePrompts, setShowExamplePrompts] = useState(false)
+  
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail)
+
+  // Example prompts for inspiration
+  const examplePrompts = [
+    "A majestic dragon soaring through clouds at sunset, digital art style",
+    "Cozy coffee shop in a rainy city, warm lighting, photorealistic",
+    "Futuristic cityscape with flying cars and neon lights, cyberpunk aesthetic",
+    "Enchanted forest with glowing mushrooms and fairy lights, fantasy art",
+    "Vintage car on a desert highway, golden hour lighting, cinematic",
+    "Abstract geometric patterns in vibrant colors, modern art style"
+  ]
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -944,10 +960,23 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   // Fetch user and quota status together to avoid race condition
   useEffect(() => {
     let channel: any = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    // Set a timeout to ensure profileLoading is set to false after 10 seconds
+    timeoutId = setTimeout(() => {
+      console.warn('⚠️ Profile loading timeout - setting profileLoading to false');
+      setProfileLoading(false);
+    }, 10000);
+    
     async function fetchUserAndQuota() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setProfileLoading(false);
+        // Clear the timeout since we're done loading
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         return;
       }
       let { data: profile, error: profileError } = await supabase
@@ -969,6 +998,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           .single();
         if (createError) {
           setProfileLoading(false);
+          // Clear the timeout since we're done loading
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
           return;
         }
         profile = newProfile;
@@ -980,7 +1014,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setIsFreeUser(!isPremium);
       
       // Fetch accessible models for this user's tier
-      await fetchUserAccessibleModels(userTier);
+      try {
+        await fetchUserAccessibleModels(userTier);
+      } catch (error) {
+        console.error('Error fetching accessible models in useEffect:', error);
+        // Set some default accessible models for free users if fetch fails
+        if (userTier === 'free') {
+          setUserAccessibleModels(['fal-ai/fast-sdxl', 'fal-ai/hidream-i1-fast', 'fal-ai/flux/schnell']);
+        }
+      }
+      
       if (!isPremium) {
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { count } = await supabase
@@ -1001,6 +1044,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         setQuotaLimit(Infinity);
       }
       setProfileLoading(false);
+      // Clear the timeout since we're done loading
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
     }
     fetchUserAndQuota();
     // Supabase Realtime subscription for profile changes and tier access changes
@@ -1049,6 +1097,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     })();
     return () => {
       supabase.removeAllChannels();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, []);
 
@@ -1237,7 +1288,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="relative z-10">
         {/* Header */}
         <header className="bg-white/90 dark:bg-gray-900/90 shadow-sm sticky top-0 z-50">
@@ -1264,7 +1315,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               <Button
                 variant={activeTab === "generate" ? "default" : "ghost"}
                 onClick={() => setActiveTab("generate")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <Plus className="w-4 h-4" />
                 <span>{t('dashboard.tabs.generate')}</span>
@@ -1272,7 +1323,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               <Button
                 variant={activeTab === "history" ? "default" : "ghost"}
                 onClick={() => setActiveTab("history")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <History className="w-4 h-4" />
                 <span>{t('dashboard.tabs.history')}</span>
@@ -1280,7 +1331,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               <Button
                 variant={activeTab === "albums" ? "default" : "ghost"}
                 onClick={() => setActiveTab("albums")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-gradient-to-r from-green-400 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <Folder className="w-4 h-4" />
                 <span>{t('dashboard.tabs.albums')}</span>
@@ -1288,7 +1339,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               <Button
                 variant={activeTab === "profile" ? "default" : "ghost"}
                 onClick={() => setActiveTab("profile")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <UserCircle className="w-4 h-4" />
                 <span className="hidden lg:inline">
@@ -1315,7 +1366,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <Button
                   variant={activeTab === "generate" ? "default" : "ghost"}
                   onClick={() => setActiveTab("generate")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
                   <Plus className="w-4 h-4" />
                   <span>{t('dashboard.tabs.generate')}</span>
@@ -1323,7 +1374,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <Button
                   variant={activeTab === "history" ? "default" : "ghost"}
                   onClick={() => setActiveTab("history")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
                   <History className="w-4 h-4" />
                   <span>{t('dashboard.tabs.history')}</span>
@@ -1331,7 +1382,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <Button
                   variant={activeTab === "albums" ? "default" : "ghost"}
                   onClick={() => setActiveTab("albums")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-gradient-to-r from-green-400 to-blue-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
                   <Folder className="w-4 h-4" />
                   <span>{t('dashboard.tabs.albums')}</span>
@@ -1339,7 +1390,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <Button
                   variant={activeTab === "profile" ? "default" : "ghost"}
                   onClick={() => setActiveTab("profile")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
                   <UserCircle className="w-4 h-4" />
                   <span>
@@ -1551,7 +1602,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <div className="lg:hidden fixed bottom-4 right-4 z-50">
                   <Button
                     onClick={() => setModelPanelOpen(true)}
-                    className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+                    className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
                   >
                     <Bot className="w-6 h-6" />
                   </Button>
@@ -1570,7 +1621,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {userAccessibleModels.length} of {availableModels.length} models
                       </span>
-                      <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
+                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white border-0 text-xs px-2 py-1 h-6">
                         {t('dashboard.generate.unlockAll')}
                       </Button>
                     </div>
@@ -1590,7 +1641,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     ? isSelected
                                       ? 'border-primary bg-primary/5 shadow-md'
                                       : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
-                                    : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
+                                    : 'border-purple-300 bg-purple-50 dark:bg-purple-900/30 hover:shadow-md'
                                 }`}
                                 onClick={() => {
                                   if (isAccessible) {
@@ -1611,7 +1662,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               >
                                 <div className="flex items-center gap-3">
                                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                    isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
+                                    isAccessible ? modelOption.bgColor : 'bg-purple-100 dark:bg-purple-800'
                                   }`}>
                                     <modelOption.icon className={`w-5 h-5 ${
                                       isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
@@ -1629,7 +1680,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         
                                         {/* NEW Badge */}
                                         {isModelNew(modelOption.id) && (
-                                          <div className="px-1.5 py-0.5 rounded text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0">
+                                          <div className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500 text-white animate-pulse flex-shrink-0">
                                             NEW
                                           </div>
                                         )}
@@ -1638,7 +1689,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
                                         isAccessible 
                                           ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                          : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                          : 'bg-purple-500 text-white'
                                       }`}>
                                         {isAccessible ? 'FREE' : 'PRO'}
                                       </div>
@@ -1672,7 +1723,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           })}
                           
                           {/* Bottom FOMO Banner Mobile */}
-                          <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
+                          <div className="p-3 bg-purple-600 rounded-lg text-white text-center mt-4">
                             <div className="flex items-center justify-center gap-1 mb-2">
                               <Sparkles className="w-4 h-4" />
                               <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
@@ -1695,560 +1746,21 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             {/* Main Content */}
             <div className="flex-1 w-full">
               {activeTab === "generate" && (
-                <div className="grid lg:grid-cols-2 gap-8">
-                  {selectedCategories.length === 0 ? (
-                    images.length > 0 && (
-                      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-                        <CardHeader>
-                          <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="relative aspect-square rounded-lg overflow-hidden">
-                              <Image
-                                src={images[0].image_url || "/placeholder.svg"}
-                                alt={images[0].prompt}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                priority
-                              />
-                            </div>
-                            <div>
-                              <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
-                                <span>{images[0].model}</span>
-                                <span>{new Date(images[0].created_at).toLocaleDateString()}</span>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full mt-2"
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  setPromptDialogText(images[0].prompt);
-                                  setPromptDialogOpen(true);
-                                }}
-                              >
-                                {t('dashboard.generate.showPrompt')}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  ) : selectedCategories.includes("Text to Image") && (
-                    <>
-                      {/* Generation Form */}
-                      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl shadow-blue-100 dark:shadow-blue-900">
-                        <CardHeader>
-                          <CardTitle className="flex items-center space-x-3 text-2xl font-bold">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 mr-1 animate-bounce-slow">
-                              <Sparkles className="w-5 h-5 text-white" />
-                            </span>
-                            {t('dashboard.generate.title')}
-                          </CardTitle>
-                          <CardDescription>{t('dashboard.generate.description')}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <form onSubmit={generateImage} className="space-y-8">
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor="prompt">{t('dashboard.generate.prompt')}</Label>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowSmartPromptBuilder(!showSmartPromptBuilder)}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Wand2 className="w-4 h-4" />
-                                  {t('dashboard.generate.smartBuilder')}
-                                </Button>
-                              </div>
-                              <div className="flex items-center">
-                                <Textarea
-                                  id="prompt"
-                                  placeholder={t('dashboard.generate.promptPlaceholder')}
-                                  value={prompt}
-                                  onChange={e => setPrompt(e.target.value)}
-                                  required
-                                  className="min-h-[80px]"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  className="ml-2"
-                                  disabled={improvingPrompt || !prompt.trim()}
-                                  title="Improve prompt with AI"
-                                  onClick={async () => {
-                                    setImprovingPrompt(true)
-                                    try {
-                                      const res = await fetch("/api/improve-prompt", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ prompt }),
-                                      })
-                                      const data = await res.json()
-                                      if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
-                                      setPrompt(data.improved)
-                                    } catch (err: any) {
-                                      toast({ title: "Error", description: err.message, variant: "destructive" })
-                                    } finally {
-                                      setImprovingPrompt(false)
-                                    }
-                                  }}
-                                >
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>{t('dashboard.generate.enhance')}</span>
-                                    <Sparkles className="w-2 h-2 text-yellow-400" />
-                                    <span className="text-yellow-400 font-bold" style={{ fontSize: '8px' }}>AI</span>
-                                  </div>
-                                </Button>
-                              </div>
-                            </div>
-                            {model === 'fal-ai/fast-sdxl' && (
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="image-size">{t('dashboard.generate.imageSize')}</Label>
-                                  <Select value={imageSize} onValueChange={setImageSize}>
-                                    <SelectTrigger id="image-size"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
-                                      <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
-                                      <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
-                                      <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
-                                      <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
-                                      <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="num-images">{t('dashboard.generate.numImages')}</Label>
-                                  <input type="number" min={1} max={8} value={numImages} onChange={e => setNumImages(Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
-                                </div>
-                                <div>
-                                  <Label htmlFor="guidance-scale">{t('dashboard.generate.guidanceScale')}</Label>
-                                  <input type="range" min={0} max={20} step={0.1} value={guidanceScale} onChange={e => setGuidanceScale(Number(e.target.value))} className="w-full" />
-                                  <span className="text-xs ml-2">{guidanceScale}</span>
-                                </div>
-                                <div>
-                                  <Label htmlFor="num-steps">{t('dashboard.generate.inferenceSteps')}</Label>
-                                  <input type="number" min={1} max={50} value={numSteps} onChange={e => setNumSteps(Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input type="checkbox" checked={expandPromptFast} onChange={e => setExpandPromptFast(e.target.checked)} id="expand-prompt-fast" className="accent-blue-600" />
-                                  <Label htmlFor="expand-prompt-fast">{t('dashboard.generate.expandPrompt')}</Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <input type="checkbox" checked={enableSafetyChecker} onChange={e => setEnableSafetyChecker(e.target.checked)} id="enable-safety-checker" className="accent-blue-600" />
-                                  <Label htmlFor="enable-safety-checker">{t('dashboard.generate.enableSafetyChecker')}</Label>
-                                </div>
-                                <div>
-                                  <Label htmlFor="negative-prompt">{t('dashboard.generate.negativePrompt')}</Label>
-                                  <input type="text" value={negativePrompt} onChange={e => setNegativePrompt(e.target.value)} id="negative-prompt" className="w-full border rounded px-2 py-1" />
-                                </div>
-                                <div>
-                                  <Label htmlFor="format">{t('dashboard.generate.format')}</Label>
-                                  <Select value={format} onValueChange={setFormat}>
-                                    <SelectTrigger id="format"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="jpeg">JPEG</SelectItem>
-                                      <SelectItem value="png">PNG</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="seed">{t('dashboard.generate.seed')}</Label>
-                                  <input type="number" value={seed} onChange={e => setSeed(e.target.value)} id="seed" className="w-32 border rounded px-2 py-1" />
-                                </div>
-                              </div>
-                            )}
-                            {model === 'fal-ai/ideogram/v3' && (
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="num-images-ideo">{t('dashboard.generate.numImages')}</Label>
-                                  <input
-                                    id="num-images-ideo"
-                                    type="number"
-                                    min={1}
-                                    max={8}
-                                    value={numImages}
-                                    onChange={e => setNumImages(Number(e.target.value))}
-                                    className="w-20 border rounded px-2 py-1"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="image-size-ideo">{t('dashboard.generate.imageSize')}</Label>
-                                  <Select value={imageSize} onValueChange={setImageSize}>
-                                    <SelectTrigger id="image-size-ideo"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
-                                      <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
-                                      <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
-                                      <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
-                                      <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
-                                      <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="style-ideo">{t('dashboard.generate.style')}</Label>
-                                  <Select value={style} onValueChange={setStyle}>
-                                    <SelectTrigger id="style-ideo"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="AUTO">{t('dashboard.generate.auto')}</SelectItem>
-                                      <SelectItem value="GENERAL">{t('dashboard.generate.general')}</SelectItem>
-                                      <SelectItem value="REALISTIC">{t('dashboard.generate.realistic')}</SelectItem>
-                                      <SelectItem value="DESIGN">{t('dashboard.generate.design')}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="expand-prompt-ideo">{t('dashboard.generate.expandPrompt')}</Label>
-                                  <input
-                                    id="expand-prompt-ideo"
-                                    type="checkbox"
-                                    checked={expandPrompt}
-                                    onChange={e => setExpandPrompt(e.target.checked)}
-                                    className="accent-blue-600 ml-2"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="rendering-speed-ideo">{t('dashboard.generate.renderingSpeed')}</Label>
-                                  <Select value={renderingSpeed} onValueChange={setRenderingSpeed}>
-                                    <SelectTrigger id="rendering-speed-ideo"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="TURBO">{t('dashboard.generate.turbo')}</SelectItem>
-                                      <SelectItem value="BALANCED">{t('dashboard.generate.balanced')}</SelectItem>
-                                      <SelectItem value="QUALITY">{t('dashboard.generate.quality')}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label htmlFor="seed-ideo">{t('dashboard.generate.seed')}</Label>
-                                  <input
-                                    id="seed-ideo"
-                                    type="number"
-                                    value={seed}
-                                    onChange={e => setSeed(e.target.value)}
-                                    className="w-32 border rounded px-2 py-1"
-                                    placeholder={t('dashboard.generate.seedPlaceholder')}
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="negative-prompt-ideo">{t('dashboard.generate.negativePrompt')}</Label>
-                                  <input
-                                    id="negative-prompt-ideo"
-                                    type="text"
-                                    value={negativePrompt}
-                                    onChange={e => setNegativePrompt(e.target.value)}
-                                    className="w-full border rounded px-2 py-1"
-                                    placeholder={t('dashboard.generate.negativePromptPlaceholder')}
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="style-codes-ideo">{t('dashboard.generate.styleCodes')}</Label>
-                                  <input
-                                    id="style-codes-ideo"
-                                    type="text"
-                                    value={styleCodes || ''}
-                                    onChange={e => setStyleCodes(e.target.value)}
-                                    className="w-full border rounded px-2 py-1"
-                                    placeholder={t('dashboard.generate.styleCodesPlaceholder')}
-                                  />
-                                  <span className="text-xs text-gray-500">{t('dashboard.generate.styleCodesHelper')}</span>
-                                </div>
-                                <div>
-                                  <Label htmlFor="color-palette-ideo">{t('dashboard.generate.colorPalette')}</Label>
-                                  <Select value={colorPalette} onValueChange={setColorPalette}>
-                                    <SelectTrigger id="color-palette-ideo"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="none">{t('dashboard.generate.none')}</SelectItem>
-                                      <SelectItem value="EMBER">{t('dashboard.generate.ember')}</SelectItem>
-                                      <SelectItem value="FRESH">{t('dashboard.generate.fresh')}</SelectItem>
-                                      <SelectItem value="JUNGLE">{t('dashboard.generate.jungle')}</SelectItem>
-                                      <SelectItem value="MAGIC">{t('dashboard.generate.magic')}</SelectItem>
-                                      <SelectItem value="MELON">{t('dashboard.generate.melon')}</SelectItem>
-                                      <SelectItem value="MOSAIC">{t('dashboard.generate.mosaic')}</SelectItem>
-                                      <SelectItem value="PASTEL">{t('dashboard.generate.pastel')}</SelectItem>
-                                      <SelectItem value="ULTRAMARINE">{t('dashboard.generate.ultramarine')}</SelectItem>
-                                      <SelectItem value="custom">{t('dashboard.generate.customPaletteLabel')}</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  {colorPalette === 'custom' && (
-                                    <input
-                                      type="text"
-                                      value={customPalette}
-                                      onChange={e => setCustomPalette(e.target.value)}
-                                      className="w-full border rounded px-2 py-1 mt-2"
-                                      placeholder={t('dashboard.generate.customPaletteHelper')}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            {model === 'fal-ai/bytedance/seededit/v3/edit-image' && (
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="reference-method">{t('dashboard.generate.referenceImage')}</Label>
-                                  <div className="flex gap-2 mt-2">
-                                    <Button
-                                      type="button"
-                                      variant={referenceMethod === 'url' ? 'default' : 'outline'}
-                                      size="sm"
-                                      onClick={() => setReferenceMethod('url')}
-                                    >
-                                      {t('dashboard.generate.urlMethod')}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant={referenceMethod === 'upload' ? 'default' : 'outline'}
-                                      size="sm"
-                                      onClick={() => setReferenceMethod('upload')}
-                                    >
-                                      {t('dashboard.generate.uploadMethod')}
-                                    </Button>
-                                  </div>
-                                </div>
-                                
-                                {referenceMethod === 'url' ? (
-                                  <div>
-                                    <Label htmlFor="image-url">{t('dashboard.generate.imageUrl')}</Label>
-                                    <Input
-                                      id="image-url"
-                                      type="url"
-                                      value={imageUrl}
-                                      onChange={(e) => setImageUrl(e.target.value)}
-                                      placeholder={t('dashboard.generate.imageUrlPlaceholder')}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <Label htmlFor="image-upload">{t('dashboard.generate.uploadImage')}</Label>
-                                    <Input
-                                      id="image-upload"
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0]
-                                        if (file) {
-                                          handleFileUpload(file)
-                                        }
-                                      }}
-                                      className="mt-1"
-                                      key={uploadedFile ? 'with-file' : 'no-file'} // Force re-render when file changes
-                                    />
-                                    {uploadedFile && uploadedFilePreview && (
-                                      <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                                        <div className="flex items-start gap-3">
-                                          <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                                            <Image
-                                              src={uploadedFilePreview}
-                                              alt="Uploaded reference image"
-                                              fill
-                                              className="object-cover"
-                                              sizes="64px"
-                                            />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                              {uploadedFile.name}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                              {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                            </p>
-                                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                              ✓ {t('dashboard.generate.readyForEditing')}
-                                            </p>
-                                          </div>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                              setUploadedFile(null)
-                                              if (uploadedFilePreview) {
-                                                URL.revokeObjectURL(uploadedFilePreview)
-                                              }
-                                              setUploadedFilePreview(null)
-                                              // Reset the file input
-                                              const fileInput = document.getElementById('image-upload') as HTMLInputElement
-                                              if (fileInput) fileInput.value = ''
-                                            }}
-                                            className="text-gray-400 hover:text-gray-600"
-                                          >
-                                            ×
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <Label htmlFor="guidance-scale-seededit">{t('dashboard.generate.guidanceScale')}</Label>
-                                  <input
-                                    id="guidance-scale-seededit"
-                                    type="range"
-                                    min={0}
-                                    max={1}
-                                    step={0.1}
-                                    value={guidanceScale}
-                                    onChange={e => setGuidanceScale(Number(e.target.value))}
-                                    className="w-full"
-                                  />
-                                  <span className="text-xs ml-2">{guidanceScale}</span>
-                                  <p className="text-xs text-gray-500 mt-1">{t('dashboard.generate.guidanceScaleHelper')}</p>
-                                </div>
-                                
-                                <div>
-                                  <Label htmlFor="seed-seededit">{t('dashboard.generate.seed')}</Label>
-                                  <input
-                                    id="seed-seededit"
-                                    type="number"
-                                    value={seed}
-                                    onChange={e => setSeed(e.target.value)}
-                                    className="w-32 border rounded px-2 py-1"
-                                    placeholder={t('dashboard.generate.seedPlaceholder')}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                <Label htmlFor="current-model">{t('dashboard.generate.currentModel')}</Label>
-                {!profileLoading ? (
-                  <div className="p-3 border rounded-lg bg-primary/5 border-primary/20">
-                    <div className="flex items-center gap-3">
-                      {(() => {
-                        const currentModel = availableModels.find(m => m.id === model);
-                        if (!currentModel) return null;
-                        return (
-                          <>
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${currentModel.bgColor}`}>
-                              <currentModel.icon className={`w-5 h-5 ${currentModel.iconColor}`} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-sm">{currentModel.name}</h3>
-                                <div className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                  {t('dashboard.generate.active')}
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">{currentModel.description}</p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs font-medium text-primary">{currentModel.category}</span>
-                                {currentModel.price && (
-                                  <span className="text-xs font-medium text-green-600">{currentModel.price}</span>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()}
+                <div className="space-y-6">
+                  {/* Smart Prompt Builder - Full width above the grid */}
+                  {showSmartPromptBuilder && selectedCategories.includes("Text to Image") && (
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                      <SmartPromptBuilder
+                        initialPrompt={prompt}
+                        onPromptChange={(newPrompt) => setPrompt(newPrompt)}
+                        onClose={() => setShowSmartPromptBuilder(false)}
+                      />
                     </div>
-                    <div className="mt-3 pt-3 border-t border-primary/10">
-                      <Button 
-                        type="button"
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full text-primary hover:bg-primary/10"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setModelPanelOpen(true)
-                          // On mobile, this will open the model panel
-                          // On desktop, the panel is already visible
-                        }}
-                      >
-                        <Bot className="w-4 h-4 mr-2" />
-                        {t('dashboard.generate.chooseModel')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-20 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModel')}</span>
-                  </div>
-                )}
-              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="aspectRatio">{t('dashboard.generate.aspectRatio')}</Label>
-                                <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="1:1">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Square className="w-4 h-4" /> {t('dashboard.generate.squareIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="1:1_hd">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Square className="w-4 h-4" /> {t('dashboard.generate.squareHdIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="3:4">
-                                      <span className="inline-flex items-center gap-2">
-                                        <RectangleVertical className="w-4 h-4" /> {t('dashboard.generate.portraitSmallIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="9:16">
-                                      <span className="inline-flex items-center gap-2">
-                                        <RectangleVertical className="w-4 h-4" /> {t('dashboard.generate.portraitLargeIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="4:3">
-                                      <span className="inline-flex items-center gap-2">
-                                        <RectangleHorizontal className="w-4 h-4" /> {t('dashboard.generate.landscapeSmallIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="16:9">
-                                      <span className="inline-flex items-center gap-2">
-                                        <RectangleHorizontal className="w-4 h-4" /> {t('dashboard.generate.landscapeLargeIcon')}
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="custom">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Settings2 className="w-4 h-4" /> {t('dashboard.generate.customIcon')}
-                                      </span>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div className="pt-4">
-                              <Button type="submit" className="w-full" disabled={loading}>
-                                {loading 
-                                  ? (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
-                                      ? t('dashboard.generate.editingButton') 
-                                      : t('dashboard.generate.generatingButton'))
-                                  : (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
-                                      ? t('dashboard.generate.editButton') 
-                                      : t('dashboard.generate.generateButton'))
-                                }
-                              </Button>
-                            </div>
-                          </form>
-                        </CardContent>
-                      </Card>
-
-                      {/* Smart Prompt Builder */}
-                      {showSmartPromptBuilder && (
-                        <div className="mb-6">
-                          <SmartPromptBuilder
-                            initialPrompt={prompt}
-                            onPromptChange={(newPrompt) => setPrompt(newPrompt)}
-                            onClose={() => setShowSmartPromptBuilder(false)}
-                          />
-                        </div>
-                      )}
-                      {/* Latest Generated Image */}
-                      {images.length > 0 && (
+                  )}
+                  
+                  <div className="grid lg:grid-cols-2 gap-8">
+                    {selectedCategories.length === 0 ? (
+                      images.length > 0 && (
                         <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
                           <CardHeader>
                             <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
@@ -2287,9 +1799,711 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             </div>
                           </CardContent>
                         </Card>
+                      )
+                    ) : selectedCategories.includes("Text to Image") && (
+                      <>
+                        {/* Generation Form */}
+                        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+                        <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-2xl rounded-2xl sm:rounded-3xl">
+                          <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
+                            <CardTitle className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-3 text-2xl sm:text-3xl font-bold">
+                              <span className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 animate-pulse">
+                                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                              </span>
+                              {t('dashboard.generate.title')}
+                            </CardTitle>
+                            <CardDescription className="text-base sm:text-lg text-muted-foreground mt-2">
+                              {t('dashboard.generate.description')}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6 sm:space-y-8 px-4 sm:px-6">
+                            <form onSubmit={generateImage} className="space-y-6 sm:space-y-8">
+                              {/* Enhanced Prompt Input Area */}
+                              <div className="space-y-4 sm:space-y-6">
+                                {/* Header with actions */}
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                                  <div className="flex items-center gap-2 sm:gap-3">
+                                    <Label htmlFor="prompt" className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+                                      {t('dashboard.generate.prompt')}
+                                    </Label>
+                                    <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Required</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 overflow-x-auto">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowExamplePrompts(!showExamplePrompts)}
+                                      className="flex items-center gap-1 sm:gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 whitespace-nowrap"
+                                    >
+                                      <Lightbulb className="w-4 h-4" />
+                                      <span className="hidden sm:inline">{t('dashboard.generate.examplePrompts')}</span>
+                                      <span className="sm:hidden">Examples</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowSmartPromptBuilder(!showSmartPromptBuilder)}
+                                      className="flex items-center gap-1 sm:gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 whitespace-nowrap"
+                                    >
+                                      <Wand2 className="w-4 h-4" />
+                                      <span className="hidden sm:inline">{t('dashboard.generate.smartBuilder')}</span>
+                                      <span className="sm:hidden">Builder</span>
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Example Prompts */}
+                                {showExamplePrompts && (
+                                  <div className="p-3 sm:p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
+                                    <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                                      <Lightbulb className="w-4 h-4" />
+                                      {t('dashboard.generate.examplePrompts')}
+                                    </h4>
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {examplePrompts.map((example, index) => (
+                                        <button
+                                          key={index}
+                                          type="button"
+                                          onClick={() => {
+                                            setPrompt(example)
+                                            setShowExamplePrompts(false)
+                                            toast({ 
+                                              title: "Example Applied", 
+                                              description: "You can now edit and customize this prompt",
+                                              duration: 2000
+                                            })
+                                          }}
+                                          className="text-left p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md transition-all duration-200 group active:scale-95"
+                                        >
+                                          <div className="flex items-start justify-between gap-2">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 group-hover:text-purple-700 dark:group-hover:text-purple-300">
+                                              {example}
+                                            </p>
+                                            <Copy className="w-4 h-4 text-gray-400 group-hover:text-purple-500 shrink-0 mt-0.5" />
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Main prompt input */}
+                                <div className="relative">
+                                  <div className="flex flex-col sm:flex-row items-start gap-3">
+                                    <div className="w-full sm:flex-1 relative">
+                                      <Textarea
+                                        id="prompt"
+                                        placeholder={t('dashboard.generate.promptPlaceholderInspiring')}
+                                        value={prompt}
+                                        onChange={e => setPrompt(e.target.value)}
+                                        required
+                                        className="min-h-[120px] sm:min-h-[140px] text-base sm:text-lg resize-none focus:ring-2 focus:ring-purple-500 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                                      />
+                                      {/* Character counter */}
+                                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-md shadow-sm">
+                                        {prompt.length} chars
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={improvingPrompt || !prompt.trim()}
+                                      title="Improve prompt with AI"
+                                      className="w-full sm:w-auto sm:shrink-0 sm:mt-2 h-10 sm:h-12 sm:w-12 p-2 sm:p-0 hover:bg-yellow-50 hover:border-yellow-200 border border-transparent"
+                                      onClick={async () => {
+                                        setImprovingPrompt(true)
+                                        try {
+                                          const res = await fetch("/api/improve-prompt", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ prompt }),
+                                          })
+                                          const data = await res.json()
+                                          if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
+                                          setPrompt(data.improved)
+                                          toast({ 
+                                            title: "Prompt Enhanced!", 
+                                            description: "Your prompt has been improved with AI suggestions",
+                                            duration: 3000
+                                          })
+                                        } catch (err: any) {
+                                          toast({ title: "Error", description: err.message, variant: "destructive" })
+                                        } finally {
+                                          setImprovingPrompt(false)
+                                        }
+                                      }}
+                                    >
+                                      {improvingPrompt ? (
+                                        <div className="animate-spin">
+                                          <Sparkles className="w-5 h-5 text-yellow-500" />
+                                        </div>
+                                      ) : (
+                                        <div className="flex sm:flex-col items-center gap-1 sm:gap-1">
+                                          <div className="flex items-center gap-1">
+                                            <Sparkles className="w-4 h-4 text-yellow-500" />
+                                            <span className="text-yellow-600 font-bold text-xs">AI</span>
+                                          </div>
+                                          <span className="text-xs text-gray-500 font-medium">{t('dashboard.generate.enhance')}</span>
+                                        </div>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  {/* Helper text */}
+                                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-2">
+                                    <Brain className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    {t('dashboard.generate.promptHelperText')}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Essential Settings - Always Visible */}
+                              <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                                <div className="space-y-2">
+                                  <Label htmlFor="current-model" className="font-semibold">{t('dashboard.generate.currentModel')}</Label>
+                                  {!profileLoading ? (
+                                    <div className="p-3 sm:p-4 border-2 rounded-xl bg-primary/5 border-primary/20">
+                                      <div className="flex items-center gap-3">
+                                        {(() => {
+                                          const currentModel = availableModels.find(m => m.id === model);
+                                          if (!currentModel) return null;
+                                          return (
+                                            <>
+                                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${currentModel.bgColor}`}>
+                                                <currentModel.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${currentModel.iconColor}`} />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                  <h3 className="font-semibold text-sm sm:text-base truncate">{currentModel.name}</h3>
+                                                  <div className="px-2 sm:px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                                                    {t('dashboard.generate.active')}
+                                                  </div>
+                                                </div>
+                                                <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{currentModel.description}</p>
+                                                <div className="flex items-center justify-between mt-2">
+                                                  <span className="text-xs sm:text-sm font-medium text-primary">{currentModel.category}</span>
+                                                  {currentModel.price && (
+                                                    <span className="text-xs sm:text-sm font-medium text-green-600">{currentModel.price}</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                      <div className="mt-3 sm:mt-4 pt-3 border-t border-primary/10">
+                                        <Button 
+                                          type="button"
+                                          variant="ghost" 
+                                          size="sm" 
+                                          className="w-full text-primary hover:bg-primary/10"
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setModelPanelOpen(true)
+                                          }}
+                                        >
+                                          <Bot className="w-4 h-4 mr-2" />
+                                          {t('dashboard.generate.chooseModel')}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="h-20 sm:h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse flex items-center justify-center">
+                                      <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModel')}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="aspectRatio" className="font-semibold">{t('dashboard.generate.aspectRatio')}</Label>
+                                  <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
+                                    <SelectTrigger className="h-10 sm:h-12">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1:1">
+                                        <span className="inline-flex items-center gap-2">
+                                          <Square className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.squareIcon')}</span>
+                                          <span className="sm:hidden">Square</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="1:1_hd">
+                                        <span className="inline-flex items-center gap-2">
+                                          <Square className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.squareHdIcon')}</span>
+                                          <span className="sm:hidden">Square HD</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="3:4">
+                                        <span className="inline-flex items-center gap-2">
+                                          <RectangleVertical className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.portraitSmallIcon')}</span>
+                                          <span className="sm:hidden">Portrait 4:3</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="9:16">
+                                        <span className="inline-flex items-center gap-2">
+                                          <RectangleVertical className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.portraitLargeIcon')}</span>
+                                          <span className="sm:hidden">Portrait 16:9</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="4:3">
+                                        <span className="inline-flex items-center gap-2">
+                                          <RectangleHorizontal className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.landscapeSmallIcon')}</span>
+                                          <span className="sm:hidden">Landscape 4:3</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="16:9">
+                                        <span className="inline-flex items-center gap-2">
+                                          <RectangleHorizontal className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.landscapeLargeIcon')}</span>
+                                          <span className="sm:hidden">Landscape 16:9</span>
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="custom">
+                                        <span className="inline-flex items-center gap-2">
+                                          <Settings2 className="w-4 h-4" /> 
+                                          <span className="hidden sm:inline">{t('dashboard.generate.customIcon')}</span>
+                                          <span className="sm:hidden">Custom</span>
+                                        </span>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+
+                              {/* Progressive Disclosure for Advanced Settings */}
+                              <div className="border-t pt-4 sm:pt-6">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                >
+                                  <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                  <span className="font-medium text-sm sm:text-base">
+                                    {showAdvancedSettings ? t('dashboard.generate.hideAdvanced') : t('dashboard.generate.showAdvanced')}
+                                  </span>
+                                  {showAdvancedSettings ? (
+                                    <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                                  )}
+                                </Button>
+                              </div>
+
+                              {/* Advanced Settings - Collapsible */}
+                              {showAdvancedSettings && (
+                                <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                                    <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    {t('dashboard.generate.advancedSettings')}
+                                  </h3>
+                                  {model === 'fal-ai/fast-sdxl' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label htmlFor="image-size">{t('dashboard.generate.imageSize')}</Label>
+                                        <Select value={imageSize} onValueChange={setImageSize}>
+                                          <SelectTrigger id="image-size"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
+                                            <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
+                                            <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
+                                            <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
+                                            <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
+                                            <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="num-images">{t('dashboard.generate.numImages')}</Label>
+                                        <input type="number" min={1} max={8} value={numImages} onChange={e => setNumImages(Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="guidance-scale">{t('dashboard.generate.guidanceScale')}</Label>
+                                        <div className="flex items-center gap-2">
+                                          <input type="range" min={0} max={20} step={0.1} value={guidanceScale} onChange={e => setGuidanceScale(Number(e.target.value))} className="flex-1" />
+                                          <span className="text-sm font-medium w-12">{guidanceScale}</span>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="num-steps">{t('dashboard.generate.inferenceSteps')}</Label>
+                                        <input type="number" min={1} max={50} value={numSteps} onChange={e => setNumSteps(Number(e.target.value))} className="w-full border rounded px-3 py-2" />
+                                      </div>
+                                      <div className="col-span-full space-y-3">
+                                        <div className="flex items-center gap-2">
+                                          <input type="checkbox" checked={expandPromptFast} onChange={e => setExpandPromptFast(e.target.checked)} id="expand-prompt-fast" className="accent-blue-600" />
+                                          <Label htmlFor="expand-prompt-fast">{t('dashboard.generate.expandPrompt')}</Label>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <input type="checkbox" checked={enableSafetyChecker} onChange={e => setEnableSafetyChecker(e.target.checked)} id="enable-safety-checker" className="accent-blue-600" />
+                                          <Label htmlFor="enable-safety-checker">{t('dashboard.generate.enableSafetyChecker')}</Label>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="negative-prompt">{t('dashboard.generate.negativePrompt')}</Label>
+                                        <input type="text" value={negativePrompt} onChange={e => setNegativePrompt(e.target.value)} id="negative-prompt" className="w-full border rounded px-3 py-2" />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="format">{t('dashboard.generate.format')}</Label>
+                                        <Select value={format} onValueChange={setFormat}>
+                                          <SelectTrigger id="format"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="jpeg">JPEG</SelectItem>
+                                            <SelectItem value="png">PNG</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="seed">{t('dashboard.generate.seed')}</Label>
+                                        <input type="number" value={seed} onChange={e => setSeed(e.target.value)} id="seed" className="w-full border rounded px-3 py-2" />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {model === 'fal-ai/ideogram/v3' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label htmlFor="num-images-ideo">{t('dashboard.generate.numImages')}</Label>
+                                        <input
+                                          id="num-images-ideo"
+                                          type="number"
+                                          min={1}
+                                          max={8}
+                                          value={numImages}
+                                          onChange={e => setNumImages(Number(e.target.value))}
+                                          className="w-full border rounded px-3 py-2"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="image-size-ideo">{t('dashboard.generate.imageSize')}</Label>
+                                        <Select value={imageSize} onValueChange={setImageSize}>
+                                          <SelectTrigger id="image-size-ideo"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="square_hd">{t('dashboard.generate.squareHd')}</SelectItem>
+                                            <SelectItem value="square">{t('dashboard.generate.square')}</SelectItem>
+                                            <SelectItem value="portrait_4_3">{t('dashboard.generate.portrait43')}</SelectItem>
+                                            <SelectItem value="portrait_16_9">{t('dashboard.generate.portrait169')}</SelectItem>
+                                            <SelectItem value="landscape_4_3">{t('dashboard.generate.landscape43')}</SelectItem>
+                                            <SelectItem value="landscape_16_9">{t('dashboard.generate.landscape169')}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="style-ideo">{t('dashboard.generate.style')}</Label>
+                                        <Select value={style} onValueChange={setStyle}>
+                                          <SelectTrigger id="style-ideo"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="AUTO">{t('dashboard.generate.auto')}</SelectItem>
+                                            <SelectItem value="GENERAL">{t('dashboard.generate.general')}</SelectItem>
+                                            <SelectItem value="REALISTIC">{t('dashboard.generate.realistic')}</SelectItem>
+                                            <SelectItem value="DESIGN">{t('dashboard.generate.design')}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="rendering-speed-ideo">{t('dashboard.generate.renderingSpeed')}</Label>
+                                        <Select value={renderingSpeed} onValueChange={setRenderingSpeed}>
+                                          <SelectTrigger id="rendering-speed-ideo"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="TURBO">{t('dashboard.generate.turbo')}</SelectItem>
+                                            <SelectItem value="BALANCED">{t('dashboard.generate.balanced')}</SelectItem>
+                                            <SelectItem value="QUALITY">{t('dashboard.generate.quality')}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          id="expand-prompt-ideo"
+                                          type="checkbox"
+                                          checked={expandPrompt}
+                                          onChange={e => setExpandPrompt(e.target.checked)}
+                                          className="accent-blue-600"
+                                        />
+                                        <Label htmlFor="expand-prompt-ideo">{t('dashboard.generate.expandPrompt')}</Label>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="seed-ideo">{t('dashboard.generate.seed')}</Label>
+                                        <input
+                                          id="seed-ideo"
+                                          type="number"
+                                          value={seed}
+                                          onChange={e => setSeed(e.target.value)}
+                                          className="w-full border rounded px-3 py-2"
+                                          placeholder={t('dashboard.generate.seedPlaceholder')}
+                                        />
+                                      </div>
+                                      <div className="col-span-full">
+                                        <Label htmlFor="negative-prompt-ideo">{t('dashboard.generate.negativePrompt')}</Label>
+                                        <input
+                                          id="negative-prompt-ideo"
+                                          type="text"
+                                          value={negativePrompt}
+                                          onChange={e => setNegativePrompt(e.target.value)}
+                                          className="w-full border rounded px-3 py-2"
+                                          placeholder={t('dashboard.generate.negativePromptPlaceholder')}
+                                        />
+                                      </div>
+                                      <div className="col-span-full">
+                                        <Label htmlFor="style-codes-ideo">{t('dashboard.generate.styleCodes')}</Label>
+                                        <input
+                                          id="style-codes-ideo"
+                                          type="text"
+                                          value={styleCodes || ''}
+                                          onChange={e => setStyleCodes(e.target.value)}
+                                          className="w-full border rounded px-3 py-2"
+                                          placeholder={t('dashboard.generate.styleCodesPlaceholder')}
+                                        />
+                                        <span className="text-xs text-gray-500 mt-1 block">{t('dashboard.generate.styleCodesHelper')}</span>
+                                      </div>
+                                      <div className="col-span-full">
+                                        <Label htmlFor="color-palette-ideo">{t('dashboard.generate.colorPalette')}</Label>
+                                        <Select value={colorPalette} onValueChange={setColorPalette}>
+                                          <SelectTrigger id="color-palette-ideo"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="none">{t('dashboard.generate.none')}</SelectItem>
+                                            <SelectItem value="EMBER">{t('dashboard.generate.ember')}</SelectItem>
+                                            <SelectItem value="FRESH">{t('dashboard.generate.fresh')}</SelectItem>
+                                            <SelectItem value="JUNGLE">{t('dashboard.generate.jungle')}</SelectItem>
+                                            <SelectItem value="MAGIC">{t('dashboard.generate.magic')}</SelectItem>
+                                            <SelectItem value="MELON">{t('dashboard.generate.melon')}</SelectItem>
+                                            <SelectItem value="MOSAIC">{t('dashboard.generate.mosaic')}</SelectItem>
+                                            <SelectItem value="PASTEL">{t('dashboard.generate.pastel')}</SelectItem>
+                                            <SelectItem value="ULTRAMARINE">{t('dashboard.generate.ultramarine')}</SelectItem>
+                                            <SelectItem value="custom">{t('dashboard.generate.customPaletteLabel')}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {colorPalette === 'custom' && (
+                                          <input
+                                            type="text"
+                                            value={customPalette}
+                                            onChange={e => setCustomPalette(e.target.value)}
+                                            className="w-full border rounded px-3 py-2 mt-2"
+                                            placeholder={t('dashboard.generate.customPaletteHelper')}
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {model === 'fal-ai/bytedance/seededit/v3/edit-image' && (
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="reference-method">{t('dashboard.generate.referenceImage')}</Label>
+                                        <div className="flex gap-2 mt-2">
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethod === 'url' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethod('url')}
+                                          >
+                                            {t('dashboard.generate.urlMethod')}
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethod === 'upload' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethod('upload')}
+                                          >
+                                            {t('dashboard.generate.uploadMethod')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      
+                                      {referenceMethod === 'url' ? (
+                                        <div>
+                                          <Label htmlFor="image-url">{t('dashboard.generate.imageUrl')}</Label>
+                                          <Input
+                                            id="image-url"
+                                            type="url"
+                                            value={imageUrl}
+                                            onChange={(e) => setImageUrl(e.target.value)}
+                                            placeholder={t('dashboard.generate.imageUrlPlaceholder')}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <Label htmlFor="image-upload">{t('dashboard.generate.uploadImage')}</Label>
+                                          <Input
+                                            id="image-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0]
+                                              if (file) {
+                                                handleFileUpload(file)
+                                              }
+                                            }}
+                                            className="mt-1"
+                                            key={uploadedFile ? 'with-file' : 'no-file'}
+                                          />
+                                          {uploadedFile && uploadedFilePreview && (
+                                            <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                                              <div className="flex items-start gap-3">
+                                                <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                                  <Image
+                                                    src={uploadedFilePreview}
+                                                    alt="Uploaded reference image"
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="64px"
+                                                  />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                    {uploadedFile.name}
+                                                  </p>
+                                                  <p className="text-xs text-gray-500 mt-1">
+                                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                                  </p>
+                                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                    ✓ {t('dashboard.generate.readyForEditing')}
+                                                  </p>
+                                                </div>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    setUploadedFile(null)
+                                                    if (uploadedFilePreview) {
+                                                      URL.revokeObjectURL(uploadedFilePreview)
+                                                    }
+                                                    setUploadedFilePreview(null)
+                                                    const fileInput = document.getElementById('image-upload') as HTMLInputElement
+                                                    if (fileInput) fileInput.value = ''
+                                                  }}
+                                                  className="text-gray-400 hover:text-gray-600"
+                                                >
+                                                  ×
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      <div>
+                                        <Label htmlFor="guidance-scale-seededit">{t('dashboard.generate.guidanceScale')}</Label>
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            id="guidance-scale-seededit"
+                                            type="range"
+                                            min={0}
+                                            max={1}
+                                            step={0.1}
+                                            value={guidanceScale}
+                                            onChange={e => setGuidanceScale(Number(e.target.value))}
+                                            className="flex-1"
+                                          />
+                                          <span className="text-sm font-medium w-12">{guidanceScale}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">{t('dashboard.generate.guidanceScaleHelper')}</p>
+                                      </div>
+                                      
+                                      <div>
+                                        <Label htmlFor="seed-seededit">{t('dashboard.generate.seed')}</Label>
+                                        <input
+                                          id="seed-seededit"
+                                          type="number"
+                                          value={seed}
+                                          onChange={e => setSeed(e.target.value)}
+                                          className="w-full border rounded px-3 py-2"
+                                          placeholder={t('dashboard.generate.seedPlaceholder')}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Generate Button */}
+                              <div className="pt-4 sm:pt-6">
+                                <Button 
+                                  type="submit" 
+                                  className="w-full h-12 sm:h-14 text-base sm:text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95" 
+                                  disabled={loading}
+                                >
+                                  {loading 
+                                    ? (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
+                                        ? t('dashboard.generate.editingButton') 
+                                        : t('dashboard.generate.generatingButton'))
+                                    : (model === 'fal-ai/bytedance/seededit/v3/edit-image' 
+                                        ? t('dashboard.generate.editButton') 
+                                        : t('dashboard.generate.generateButton'))
+                                  }
+                                </Button>
+                              </div>
+                            </form>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+
+                      {/* Latest 3 Creations - Grid Preview */}
+                      {images.length > 0 && (
+                        <div className="max-w-4xl mx-auto mt-6 sm:mt-8 px-4 sm:px-6">
+                          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+                            <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
+                              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                {t('dashboard.generate.latestCreations')}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="px-4 sm:px-6">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {images.slice(0, 3).map((image, index) => (
+                                  <div key={image.id} className="group cursor-pointer" onClick={() => { setExpandedImage(image); setShowFullPrompt(false); }}>
+                                    <div className="relative aspect-square rounded-xl overflow-hidden shadow-md mb-3 group-hover:shadow-lg transition-shadow">
+                                      <Image
+                                        src={image.image_url || "/placeholder.svg"}
+                                        alt={image.prompt}
+                                        fill
+                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                        priority={index === 0}
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                                        {image.prompt}
+                                      </p>
+                                      <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <span className="truncate max-w-[100px]">{image.model}</span>
+                                        <span>{new Date(image.created_at).toLocaleDateString()}</span>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        type="button"
+                                        className="w-full"
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setPromptDialogText(image.prompt);
+                                          setPromptDialogOpen(true);
+                                        }}
+                                      >
+                                        {t('dashboard.generate.showPrompt')}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
                       )}
                     </>
                   )}
+                  </div>
                 </div>
               )}
 
@@ -2370,7 +2584,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
               {activeTab === "profile" && (
                 <div className="max-w-4xl mx-auto">
                   <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
-                    <CardHeader className="text-center bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                    <CardHeader className="text-center bg-gray-50 dark:bg-gray-800">
                       <CardTitle className="text-3xl">{t('dashboard.profile.title')}</CardTitle>
                       <CardDescription className="text-lg">{t('dashboard.profile.subtitle')}</CardDescription>
                     </CardHeader>
@@ -2378,21 +2592,21 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       <div className="space-y-8">
                         <div className="text-center">
                           <div className="relative group cursor-pointer">
-                            <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-105 transition-transform duration-300">
+                            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-105 transition-transform duration-300">
                               <User className="w-12 h-12 text-white" />
                             </div>
                             <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                               <span className="text-white text-xs font-medium">{t('dashboard.profile.editAvatar')}</span>
                             </div>
                           </div>
-                          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                          <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                             {userName ? t('dashboard.profile.welcome', { name: userName }) : t('dashboard.profile.welcomeGeneric')}
                           </h3>
                           <p className="text-gray-500 mt-1">{t('dashboard.profile.creativeArtist')}</p>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                          <div className="group p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-purple-200/50 dark:border-purple-700/50">
+                          <div className="group p-6 bg-purple-50 dark:bg-purple-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-purple-200/50 dark:border-purple-700/50">
                             <div className="flex items-center justify-between mb-3">
                               <ImageIcon className="w-8 h-8 text-purple-600 group-hover:scale-110 transition-transform duration-300" />
                               <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
@@ -2416,7 +2630,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             </div>
                           </div>
 
-                          <div className="group p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-blue-200/50 dark:border-blue-700/50">
+                          <div className="group p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-blue-200/50 dark:border-blue-700/50">
                             <div className="flex items-center justify-between mb-3">
                               <Bot className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
                               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
@@ -2426,7 +2640,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <div className="text-xs text-blue-500 mt-1">{t('dashboard.profile.exploreMore')}</div>
                           </div>
 
-                          <div className="group p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-green-200/50 dark:border-green-700/50">
+                          <div className="group p-6 bg-green-50 dark:bg-green-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-green-200/50 dark:border-green-700/50">
                             <div className="flex items-center justify-between mb-3">
                               <History className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform duration-300" />
                               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -2437,7 +2651,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           </div>
 
                           {!profileLoading && (
-                            <div className="group p-6 bg-gradient-to-br from-yellow-50 via-orange-50 to-pink-50 dark:from-yellow-900/20 dark:via-orange-900/20 dark:to-pink-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-yellow-200/50 dark:border-yellow-700/50 min-w-0">
+                            <div className="group p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-yellow-200/50 dark:border-yellow-700/50 min-w-0">
                               {isFreeUser ? (
                                 <>
                                   <div className="flex items-center justify-between mb-3">
@@ -2451,13 +2665,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               ) : (
                                 <>
                                   <div className="flex items-center justify-between mb-3">
-                                    <Rocket className="w-8 h-8 text-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text group-hover:scale-110 transition-transform duration-300" />
-                                    <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-pulse"></div>
+                                    <Rocket className="w-8 h-8 text-yellow-600 group-hover:scale-110 transition-transform duration-300" />
+                                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
                                   </div>
-                                  <div className="text-2xl font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent mb-1 group-hover:scale-105 transition-transform duration-300 leading-tight">
+                                  <div className="text-2xl font-black text-yellow-600 mb-1 group-hover:scale-105 transition-transform duration-300 leading-tight">
                                     {t('dashboard.profile.unlimited')}
                                   </div>
-                                  <div className="text-sm font-bold bg-gradient-to-r from-yellow-700 via-pink-600 to-purple-700 bg-clip-text text-transparent">
+                                  <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
                                     {t('dashboard.profile.enjoyUnlimited')}
                                   </div>
                                   <div className="text-xs text-yellow-600 mt-1">{t('dashboard.profile.premiumMember')}</div>
@@ -2499,10 +2713,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       <div className="flex justify-center mt-12 mb-4">
                         <Button
                           onClick={handleSignOut}
-                          className="group flex items-center justify-center gap-4 px-16 py-6 rounded-full text-xl font-bold bg-gradient-to-r from-red-600 via-pink-600 to-red-700 text-white shadow-xl border-2 border-red-500 hover:from-red-700 hover:via-pink-700 hover:to-red-800 hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-red-300 w-full sm:w-auto relative overflow-hidden"
+                          className="group flex items-center justify-center gap-4 px-16 py-6 rounded-full text-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-xl border-2 border-red-500 hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-red-300 w-full sm:w-auto relative overflow-hidden"
                           style={{ minWidth: 280 }}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-red-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           <LogOut className="w-8 h-8 group-hover:rotate-12 transition-transform duration-300" />
                           <span className="tracking-wide relative z-10">{t('dashboard.actions.logOut')}</span>
                         </Button>
@@ -3245,7 +3458,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         disabled={editLoading || !editPrompt.trim()}
                         className={`w-full text-white h-12 lg:h-12 text-sm font-bold transition-all duration-200 ${
                           inpaintMode 
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800" 
+                            ? "bg-blue-600 hover:bg-blue-700 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800" 
                             : "bg-purple-600 hover:bg-purple-700"
                         }`}
                       >

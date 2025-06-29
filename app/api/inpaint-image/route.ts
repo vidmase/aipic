@@ -168,21 +168,22 @@ export async function POST(request: NextRequest) {
       // First, check if user already has an "Inpainted" album
       let { data: existingAlbum, error: albumFindError } = await supabase
         .from('albums')
-        .select('id')
+        .select('id, cover_image_url')
         .eq('user_id', user.id)
         .eq('name', 'Inpainted')
         .single()
 
       let albumId = existingAlbum?.id
 
-      // If no album exists, create it
+      // If no album exists, create it with cover image
       if (!existingAlbum && albumFindError) {
         console.log('Creating new Inpainted album for user:', user.id)
         const { data: newAlbum, error: albumCreateError } = await supabase
           .from('albums')
           .insert({
             user_id: user.id,
-            name: 'Inpainted'
+            name: 'Inpainted',
+            cover_image_url: generatedImage.url
           })
           .select()
           .single()
@@ -191,8 +192,16 @@ export async function POST(request: NextRequest) {
           console.error('Error creating Inpainted album:', albumCreateError)
         } else {
           albumId = newAlbum.id
-          console.log('Created Inpainted album with ID:', albumId)
+          console.log('Created Inpainted album with cover image:', albumId)
         }
+      } else if (existingAlbum && !existingAlbum.cover_image_url) {
+        // Album exists but has no cover image, set this image as cover
+        console.log('Setting cover image for existing Inpainted album:', albumId)
+        await supabase
+          .from('albums')
+          .update({ cover_image_url: generatedImage.url })
+          .eq('id', albumId)
+        console.log('Cover image set for Inpainted album')
       }
 
       // Add image to the album if we have an album ID

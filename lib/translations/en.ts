@@ -229,6 +229,19 @@ export const en = {
       deleteConfirm: "Are you sure you want to delete this image?",
       deleteSuccess: "Image deleted successfully"
     },
+    albums: {
+      title: "Your Albums",
+      noAlbums: "No albums found.",
+      editAlbum: "Edit Album Name",
+      saveAlbum: "Save",
+      cancelEdit: "Cancel",
+      albumNameEmpty: "Album name cannot be empty",
+      albumNameUpdated: "Album name updated successfully",
+      albumUpdateError: "Failed to update album name",
+      backToAlbums: "← Back to Albums",
+      noImagesInAlbum: "No images in this album yet.",
+      imagesCount: "{count} images"
+    },
     profile: {
       title: "Profile Settings",
       subtitle: "Manage your account settings",

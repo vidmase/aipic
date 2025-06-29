@@ -231,6 +231,19 @@ export const lt: EnglishMessages = {
       deleteConfirm: "Ar tikrai norite ištrinti šį vaizdą?",
       deleteSuccess: "Vaizdas sėkmingai ištrintas"
     },
+    albums: {
+      title: "Jūsų Albumai",
+      noAlbums: "Albumų nerasta.",
+      editAlbum: "Redaguoti Albumo Pavadinimą",
+      saveAlbum: "Išsaugoti",
+      cancelEdit: "Atšaukti",
+      albumNameEmpty: "Albumo pavadinimas negali būti tuščias",
+      albumNameUpdated: "Albumo pavadinimas sėkmingai atnaujintas",
+      albumUpdateError: "Nepavyko atnaujinti albumo pavadinimo",
+      backToAlbums: "← Grįžti į Albumus",
+      noImagesInAlbum: "Šiame albume dar nėra vaizdų.",
+      imagesCount: "{count} vaizdai"
+    },
     profile: {
       title: "Profilio Nustatymai",
       subtitle: "Tvarkykite savo paskyros nustatymus",

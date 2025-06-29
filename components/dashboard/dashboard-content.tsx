@@ -135,6 +135,10 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   } | null>(null)
   const [showUndoButton, setShowUndoButton] = useState(false)
   
+  // Album editing state
+  const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null)
+  const [editingAlbumName, setEditingAlbumName] = useState("")
+  
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail)
 
   const handleSignOut = async () => {
@@ -739,6 +743,75 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     )
   }
 
+  // Album editing functions
+  const startEditingAlbum = (album: { id: string; name: string }) => {
+    setEditingAlbumId(album.id)
+    setEditingAlbumName(album.name)
+  }
+
+  const cancelEditingAlbum = () => {
+    setEditingAlbumId(null)
+    setEditingAlbumName("")
+  }
+
+  const saveAlbumName = async (albumId: string) => {
+    if (!editingAlbumName.trim()) {
+      toast({
+        title: "Error",
+        description: t('dashboard.albums.albumNameEmpty'),
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch("/api/albums", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          albumId,
+          name: editingAlbumName.trim(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update album name")
+      }
+
+      // Update the album in the local state
+      setAlbums((prev: any[]) => prev.map(album => 
+        album.id === albumId 
+          ? { ...album, name: editingAlbumName.trim() }
+          : album
+      ))
+
+      // If we're viewing this album, update the selected album too
+      if (selectedAlbum?.id === albumId) {
+        setSelectedAlbum((prev: any) => prev ? { ...prev, name: editingAlbumName.trim() } : null)
+      }
+
+      setEditingAlbumId(null)
+      setEditingAlbumName("")
+
+      toast({
+        title: "Success",
+        description: t('dashboard.albums.albumNameUpdated'),
+        duration: 3000,
+      })
+    } catch (error) {
+      console.error("Error updating album name:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : t('dashboard.albums.albumUpdateError'),
+        variant: "destructive",
+      })
+    }
+  }
+
   // Fetch user accessible models based on their tier
   const fetchUserAccessibleModels = async (userTier: string, showLoading: boolean = false) => {
     try {
@@ -1306,17 +1379,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             {/* Model Selection Side Panel - only show on Generate tab */}
             {activeTab === "generate" && (
               <>
-                {/* Desktop Side Panel */}
+                {/* Desktop Side Panel - Simplified */}
                 <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
-                  <Card className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-2xl sticky top-20 max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden flex flex-col">
-                    <CardHeader className="pb-4 bg-gradient-to-br from-gray-50/80 to-white/80 dark:from-gray-800/80 dark:to-gray-900/80 border-b border-gray-200/30 dark:border-gray-700/30">
+                  <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg sticky top-20 max-h-[calc(100vh-6rem)] rounded-xl overflow-hidden flex flex-col">
+                    <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl font-bold flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg">
-                            <Bot className="w-5 h-5 text-white" />
+                        <CardTitle className="text-lg font-semibold flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                            <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                           </div>
-                          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                          {t('dashboard.generate.aiModels')}
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {t('dashboard.generate.aiModels')}
                           </span>
                         </CardTitle>
                         {isFreeUser && (
@@ -1325,47 +1398,38 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             size="sm"
                             onClick={refreshModelPermissions}
                             disabled={refreshingPermissions}
-                            className="h-8 px-3 text-xs hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200"
+                            className="h-8 px-3 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
                           >
                             {refreshingPermissions ? (
-                              <>
-                                <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                                {t('dashboard.generate.refreshing')}
-                              </>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
                             ) : (
-                              <>
-                                <RefreshCw className="w-3 h-3 mr-1.5" />
-                                {t('dashboard.generate.refresh')}
-                              </>
+                              <RefreshCw className="w-3 h-3" />
                             )}
                           </Button>
                         )}
                       </div>
-                      {/* Enhanced Stats Banner */}
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200/50 dark:border-amber-800/50 mt-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse shadow-sm"></div>
-                          <div>
-                            <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                              {userAccessibleModels.length} of {availableModels.length} models
+                      
+                      {/* Simplified Stats */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mt-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {userAccessibleModels.length} of {availableModels.length} models
                           </span>
-                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                              Available in your plan
-                            </p>
-                        </div>
                         </div>
                         <Button 
                           size="sm" 
-                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-3 py-1.5 h-auto rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-semibold"
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 h-auto rounded-md"
                         >
-                          {t('dashboard.generate.unlockAll')}
+                          Upgrade
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0 px-4 flex-1 overflow-y-auto">
+                    
+                    <CardContent className="pt-4 px-4 flex-1 overflow-y-auto">
                       {!profileLoading ? (
-                        <div className="space-y-2 pb-4">
-                          {/* Model List - Enhanced Desktop Style */}
+                        <div className="space-y-3 pb-4">
+                          {/* Simplified Model List */}
                           {availableModels.map((modelOption) => {
                             const isAccessible = isModelAccessible(modelOption.id);
                             const isSelected = model === modelOption.id;
@@ -1373,17 +1437,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             return (
                               <div
                                 key={modelOption.id}
-                                className={`group relative p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
                                   isAccessible
                                     ? isSelected
-                                      ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/40 dark:to-blue-900/40 shadow-lg ring-2 ring-purple-200 dark:ring-purple-700'
-                                      : 'border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 hover:border-purple-300 hover:shadow-md hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50 dark:hover:from-gray-800 dark:hover:to-purple-900/20'
-                                    : 'border-purple-200 bg-gradient-to-br from-purple-50/80 via-pink-50/80 to-purple-50/80 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-purple-900/20 hover:shadow-lg hover:border-purple-300'
+                                      ? 'border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-700'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50'
                                 }`}
                                 onClick={() => {
                                   if (isAccessible) {
                                     setModel(modelOption.id)
-                                    // Switch to generate tab and ensure category is selected
                                     setActiveTab("generate")
                                     if (!selectedCategories.includes("Text to Image")) {
                                       setSelectedCategories(["Text to Image"])
@@ -1397,104 +1460,86 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   }
                                 }}
                               >
-                                {/* Premium Glow Effect */}
-                                {!isAccessible && (
-                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-xl"></div>
-                                )}
-                                
-                                {/* Model Content */}
-                                <div className="relative z-10">
-                                  <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:shadow-lg ${
-                                      isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
-                                    }`}>
-                                      <modelOption.icon className={`w-6 h-6 transition-all duration-300 group-hover:scale-110 ${
-                                        isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
-                                      }`} />
-                                    </div>
-                                    
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                          <h3 className={`font-bold text-base truncate transition-colors duration-300 ${
-                                          isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
-                                        }`}>
-                                          {modelOption.name}
-                                        </h3>
-                                        
-                                          {/* NEW Badge */}
-                                          {isModelNew(modelOption.id) && (
-                                            <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0 shadow-md">
-                                              NEW
-                                            </div>
-                                          )}
-                                        </div>
-                                        
-                                        {/* Access Badge */}
-                                        <div className={`px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-2 shadow-sm transition-all duration-300 ${
-                                          isAccessible 
-                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                                            : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                        }`}>
-                                          {isAccessible ? 'FREE' : 'PRO'}
-                                        </div>
-                                      </div>
-                                      
-                                      <p className={`text-sm leading-relaxed mb-3 ${
-                                        isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
-                                      }`}>
-                                        {modelOption.description}
-                                      </p>
-                                      
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                                            isAccessible ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                                        }`}>
-                                          {modelOption.category}
-                                        </span>
-                                        
-                                          {!isAccessible && (
-                                            <Lock className="w-4 h-4 text-purple-500" />
-                                          )}
-                                        </div>
-                                        
-                                        {isAccessible && modelOption.price && (
-                                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
-                                            {modelOption.price}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
+                                <div className="flex items-center gap-3">
+                                  {/* Simplified Icon */}
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                    isAccessible ? modelOption.bgColor : 'bg-gray-100 dark:bg-gray-700'
+                                  }`}>
+                                    <modelOption.icon className={`w-5 h-5 ${
+                                      isAccessible ? modelOption.iconColor : 'text-gray-500 dark:text-gray-400'
+                                    }`} />
                                   </div>
                                   
-
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                                        {modelOption.name}
+                                      </h3>
+                                      
+                                      <div className="flex items-center gap-2">
+                                        {/* NEW Badge - Simplified */}
+                                        {isModelNew(modelOption.id) && (
+                                          <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded">
+                                            NEW
+                                          </span>
+                                        )}
+                                        
+                                        {/* Access Badge - Simplified */}
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                          isAccessible 
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                                        }`}>
+                                          {isAccessible ? 'FREE' : 'PRO'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                                      {modelOption.description}
+                                    </p>
+                                    
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        {modelOption.category}
+                                      </span>
+                                      
+                                      {isAccessible && modelOption.price && (
+                                        <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                                          {modelOption.price}
+                                        </span>
+                                      )}
+                                      
+                                      {!isAccessible && (
+                                        <Lock className="w-3 h-3 text-gray-400" />
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             )
                           })}
                           
-                          {/* Enhanced Upgrade Banner */}
-                          <div className="p-4 bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 rounded-xl text-white text-center mt-6 shadow-lg relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
-                            <div className="relative z-10">
-                              <div className="flex items-center justify-center gap-2 mb-3">
-                                <Sparkles className="w-5 h-5 animate-pulse" />
-                                <span className="font-bold text-base">
-                                  Unlock {availableModels.length - userAccessibleModels.length} Premium Models
+                          {/* Simplified Upgrade Banner */}
+                          {userAccessibleModels.length < availableModels.length && (
+                            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 text-center mt-4">
+                              <div className="flex items-center justify-center gap-2 mb-2">
+                                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                <span className="font-medium text-sm text-purple-900 dark:text-purple-100">
+                                  Unlock {availableModels.length - userAccessibleModels.length} More Models
                                 </span>
-                            </div>
-                              <p className="text-sm opacity-90 mb-3">
-                                Get access to the latest AI models and features
+                              </div>
+                              <p className="text-xs text-purple-700 dark:text-purple-300 mb-3">
+                                Access premium AI models and advanced features
                               </p>
-                              <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-sm px-4 py-2 h-auto rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
-                              {t('dashboard.generate.upgradeNow')}
-                            </Button>
+                              <Button className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 h-auto rounded-md w-full">
+                                {t('dashboard.generate.upgradeNow')}
+                              </Button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
+                        <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse flex items-center justify-center">
                           <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModels')}</span>
                         </div>
                       )}
@@ -1506,161 +1551,145 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <div className="lg:hidden fixed bottom-4 right-4 z-50">
                   <Button
                     onClick={() => setModelPanelOpen(true)}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg rounded-full w-14 h-14 flex items-center justify-center"
+                    className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
                   >
                     <Bot className="w-6 h-6" />
                   </Button>
                 </div>
 
-                {/* Mobile Model Panel Overlay */}
-                {modelPanelOpen && (
-                  <div className="lg:hidden fixed inset-0 bg-black/50 z-50" onClick={() => setModelPanelOpen(false)}>
-                    <div className="absolute right-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                      <div className="p-4 border-b">
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-lg font-bold flex items-center gap-2">
-                            <Bot className="w-5 h-5 text-purple-600" />
-                            {t('dashboard.generate.aiModels')}
-                          </h2>
-                          <Button variant="ghost" size="sm" onClick={() => setModelPanelOpen(false)}>
-                            ✕
-                          </Button>
-                        </div>
-                        {/* FOMO Header Mobile */}
-                        <div className="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800 mt-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                              {t('dashboard.generate.modelsCount', { current: userAccessibleModels.length, total: availableModels.length })}
-                            </span>
-                          </div>
-                          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
-                            {t('dashboard.generate.unlockAll')}
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        {!profileLoading ? (
-                          <div className="space-y-3">
-                            {/* Same model list as desktop */}
-                            {availableModels.map((modelOption) => {
-                              const isAccessible = isModelAccessible(modelOption.id);
-                              const isSelected = model === modelOption.id;
-                              
-                              return (
-                                <div
-                                  key={modelOption.id}
-                                  className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                                    isAccessible
-                                      ? isSelected
-                                        ? 'border-primary bg-primary/5 shadow-md'
-                                        : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
-                                      : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
-                                  }`}
-                                  onClick={() => {
-                                    if (isAccessible) {
-                                      setModel(modelOption.id)
-                                      setModelPanelOpen(false)
-                                      // Switch to generate tab and ensure category is selected
-                                      setActiveTab("generate")
-                                      if (!selectedCategories.includes("Text to Image")) {
-                                        setSelectedCategories(["Text to Image"])
-                                      }
-                                    } else {
-                                      toast({
-                                        title: t('dashboard.generate.premiumModel'),
-                                        description: t('dashboard.generate.upgradeToUnlock', { modelName: modelOption.name }),
-                                        variant: "destructive",
-                                      })
+                {/* Mobile Model Panel Dialog */}
+                <Dialog open={modelPanelOpen} onOpenChange={setModelPanelOpen}>
+                  <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col p-0">
+                    <DialogHeader className="p-4 pb-0">
+                      <DialogTitle className="flex items-center gap-2">
+                        <Bot className="w-5 h-5 text-purple-600" />
+                        {t('dashboard.generate.aiModels')}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 mx-4 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {userAccessibleModels.length} of {availableModels.length} models
+                      </span>
+                      <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 text-xs px-2 py-1 h-6">
+                        {t('dashboard.generate.unlockAll')}
+                      </Button>
+                    </div>
+                    <div className="p-4 flex-1 overflow-y-auto">
+                      {!profileLoading ? (
+                        <div className="space-y-3">
+                          {/* Mobile Model List */}
+                          {availableModels.map((modelOption) => {
+                            const isAccessible = isModelAccessible(modelOption.id);
+                            const isSelected = model === modelOption.id;
+                            
+                            return (
+                              <div
+                                key={modelOption.id}
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                  isAccessible
+                                    ? isSelected
+                                      ? 'border-primary bg-primary/5 shadow-md'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 hover:shadow-sm'
+                                    : 'border-purple-300 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-purple-900/30 hover:shadow-md'
+                                }`}
+                                onClick={() => {
+                                  if (isAccessible) {
+                                    setModel(modelOption.id)
+                                    setModelPanelOpen(false)
+                                    setActiveTab("generate")
+                                    if (!selectedCategories.includes("Text to Image")) {
+                                      setSelectedCategories(["Text to Image"])
                                     }
-                                  }}
-                                >
-                                  <div className="relative z-10">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                        isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
-                                      }`}>
-                                        <modelOption.icon className={`w-5 h-5 ${
-                                          isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
-                                        }`} />
+                                  } else {
+                                    toast({
+                                      title: t('dashboard.generate.premiumModel'),
+                                      description: t('dashboard.generate.upgradeToUnlock', { modelName: modelOption.name }),
+                                      variant: "destructive",
+                                    })
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                    isAccessible ? modelOption.bgColor : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-800 dark:to-pink-800'
+                                  }`}>
+                                    <modelOption.icon className={`w-5 h-5 ${
+                                      isAccessible ? modelOption.iconColor : 'text-purple-600 dark:text-purple-300'
+                                    }`} />
+                                  </div>
+                                  
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <h3 className={`font-semibold text-sm truncate ${
+                                          isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
+                                        }`}>
+                                          {modelOption.name}
+                                        </h3>
+                                        
+                                        {/* NEW Badge */}
+                                        {isModelNew(modelOption.id) && (
+                                          <div className="px-1.5 py-0.5 rounded text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0">
+                                            NEW
+                                          </div>
+                                        )}
                                       </div>
                                       
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2">
-                                          <h3 className={`font-semibold text-sm truncate ${
-                                            isAccessible ? 'text-gray-900 dark:text-gray-100' : 'text-purple-900 dark:text-purple-100'
-                                          }`}>
-                                            {modelOption.name}
-                                          </h3>
-                                            
-                                            {/* NEW Badge */}
-                                            {isModelNew(modelOption.id) && (
-                                              <div className="px-1.5 py-0.5 rounded text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex-shrink-0">
-                                                NEW
-                                              </div>
-                                            )}
-                                          </div>
-                                          
-                                          <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
-                                            isAccessible 
-                                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                          }`}>
-                                            {isAccessible ? 'FREE' : 'PRO'}
-                                          </div>
-                                        </div>
-                                        
-                                        <p className={`text-xs mt-1 ${
-                                          isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
-                                        }`}>
-                                          {modelOption.description}
-                                        </p>
-                                        
-                                        <div className="flex items-center justify-between mt-2">
-                                          <span className={`text-xs font-medium ${
-                                            isAccessible ? 'text-primary' : 'text-purple-600 dark:text-purple-400'
-                                          }`}>
-                                            {modelOption.category}
-                                          </span>
-                                          
-                                          {isAccessible && modelOption.price && (
-                                            <span className="text-xs font-medium text-green-600">{modelOption.price}</span>
-                                          )}
-                                          
-                                          {!isAccessible && (
-                                            <Lock className="w-3 h-3 text-purple-600" />
-                                          )}
-                                        </div>
+                                      <div className={`px-1.5 py-0.5 rounded text-xs font-bold flex-shrink-0 ml-2 ${
+                                        isAccessible 
+                                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                          : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                      }`}>
+                                        {isAccessible ? 'FREE' : 'PRO'}
                                       </div>
                                     </div>
                                     
-
+                                    <p className={`text-xs mt-1 ${
+                                      isAccessible ? 'text-gray-600 dark:text-gray-400' : 'text-purple-700 dark:text-purple-300'
+                                    }`}>
+                                      {modelOption.description}
+                                    </p>
+                                    
+                                    <div className="flex items-center justify-between mt-2">
+                                      <span className={`text-xs font-medium ${
+                                        isAccessible ? 'text-primary' : 'text-purple-600 dark:text-purple-400'
+                                      }`}>
+                                        {modelOption.category}
+                                      </span>
+                                      
+                                      {isAccessible && modelOption.price && (
+                                        <span className="text-xs font-medium text-green-600">{modelOption.price}</span>
+                                      )}
+                                    
+                                      {!isAccessible && (
+                                        <Lock className="w-3 h-3 text-purple-600" />
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              )
-                            })}
-                            
-                            {/* Bottom FOMO Banner Mobile */}
-                            <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
-                              <div className="flex items-center justify-center gap-1 mb-2">
-                                <Sparkles className="w-4 h-4" />
-                                <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
                               </div>
-                              <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
-                                {t('dashboard.generate.upgradeNow')}
-                              </Button>
+                            )
+                          })}
+                          
+                          {/* Bottom FOMO Banner Mobile */}
+                          <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white text-center mt-4">
+                            <div className="flex items-center justify-center gap-1 mb-2">
+                              <Sparkles className="w-4 h-4" />
+                              <span className="font-bold text-sm">{t('dashboard.generate.missingModels', { count: availableModels.length - userAccessibleModels.length })}</span>
                             </div>
+                            <Button className="bg-white text-purple-600 hover:bg-gray-100 font-bold text-xs px-3 py-1 h-7">
+                              {t('dashboard.generate.upgradeNow')}
+                            </Button>
                           </div>
-                        ) : (
-                          <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
-                            <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModels')}</span>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-md animate-pulse flex items-center justify-center">
+                          <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModels')}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  </DialogContent>
+                </Dialog>
               </>
             )}
             {/* Main Content */}
@@ -2485,16 +2514,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
               {activeTab === "albums" && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-6">Your Albums</h2>
+                  <h2 className="text-2xl font-bold mb-6">{t('dashboard.albums.title')}</h2>
                   {selectedAlbum ? (
                     <div>
                       <Button variant="ghost" className="mb-4" onClick={() => setSelectedAlbum(null)}>
-                        ← Back to Albums
+{t('dashboard.albums.backToAlbums')}
                       </Button>
                       <h3 className="text-xl font-semibold mb-4">{selectedAlbum.name}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                         {albumImages.length === 0 ? (
-                          <div className="col-span-full text-center text-gray-500">No images in this album yet.</div>
+                          <div className="col-span-full text-center text-gray-500">{t('dashboard.albums.noImagesInAlbum')}</div>
                         ) : (
                           albumImages.map((image) => (
                             <Card
@@ -2554,15 +2583,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                       {albums.length === 0 ? (
-                        <div className="col-span-full text-center text-gray-500">No albums found.</div>
+                        <div className="col-span-full text-center text-gray-500">{t('dashboard.albums.noAlbums')}</div>
                       ) : (
                         albums.map(album => (
                           <Card
                             key={album.id}
-                            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden cursor-pointer"
-                            onClick={() => setSelectedAlbum(album)}
+                            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl overflow-hidden group"
                           >
-                            <div className="relative aspect-square">
+                            <div 
+                              className="relative aspect-square cursor-pointer"
+                              onClick={() => setSelectedAlbum(album)}
+                            >
                               <Image
                                 src={album.cover_image_url || "/placeholder.svg"}
                                 alt={album.name}
@@ -2573,10 +2604,62 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   (e.target as HTMLImageElement).src = "/placeholder.svg"
                                 }}
                               />
+                              {/* Edit button - shows on hover */}
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  startEditingAlbum(album)
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             </div>
                             <CardContent className="p-4">
-                              <div className="font-semibold text-lg mb-1">{album.name}</div>
-                              <div className="text-xs text-gray-500">{album.album_images?.[0]?.count || 0} images</div>
+                              {editingAlbumId === album.id ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={editingAlbumName}
+                                    onChange={(e) => setEditingAlbumName(e.target.value)}
+                                    className="text-lg font-semibold"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        saveAlbumName(album.id)
+                                      } else if (e.key === 'Escape') {
+                                        cancelEditingAlbum()
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => saveAlbumName(album.id)}
+                                      className="flex-1"
+                                    >
+{t('dashboard.albums.saveAlbum')}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={cancelEditingAlbum}
+                                      className="flex-1"
+                                    >
+{t('dashboard.albums.cancelEdit')}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div 
+                                  className="cursor-pointer"
+                                  onClick={() => setSelectedAlbum(album)}
+                                >
+                                  <div className="font-semibold text-lg mb-1">{album.name}</div>
+                                  <div className="text-xs text-gray-500">{album.album_images?.[0]?.count || 0} images</div>
+                                </div>
+                              )}
                             </CardContent>
                           </Card>
                         ))

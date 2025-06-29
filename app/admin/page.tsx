@@ -4,7 +4,7 @@ import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
 
 export default async function AdminPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const { data: { user }, error } = await supabase.auth.getUser()
 

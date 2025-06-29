@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 
 export default async function DashboardPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const { data: { user }, error } = await supabase.auth.getUser()
 

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { LandingPage } from "@/components/landing-page"
 
 export default async function Home() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const {
     data: { user },

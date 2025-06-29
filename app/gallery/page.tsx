@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 export default async function GalleryPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   // Get only the first 6 recent public images
   const { data: rawImages } = await supabase

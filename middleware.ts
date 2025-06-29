@@ -1,21 +1,39 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  
+  let supabaseResponse = NextResponse.next({
+    request: req,
+  })
+
   // Skip middleware for static files and API routes
   if (
     req.nextUrl.pathname.startsWith('/_next') ||
     req.nextUrl.pathname.startsWith('/api') ||
     req.nextUrl.pathname.includes('.')
   ) {
-    return res
+    return supabaseResponse
   }
 
   try {
-    const supabase = createMiddlewareClient({ req, res })
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              req.cookies.set(name, value)
+              supabaseResponse.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
 
     // Get user with proper error handling
     const {
@@ -43,11 +61,11 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    return res
+    return supabaseResponse
   } catch (error) {
     console.error('Middleware error:', error)
     // On error, allow the request to proceed without redirect
-    return res
+    return supabaseResponse
   }
 }
 

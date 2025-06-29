@@ -4,7 +4,7 @@ import { ADMIN_EMAILS } from "@/lib/admin-config"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     
     // Get current user
     const {

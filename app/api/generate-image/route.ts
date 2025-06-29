@@ -23,7 +23,7 @@ const IMAGE_GENERATION_QUOTA_PER_DAY = 3; // Change this value to adjust quota
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
 
     // Check authentication
       const {

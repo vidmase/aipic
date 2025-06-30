@@ -22,8 +22,14 @@ AI image processing operations (especially with fal.ai) can take longer than the
 #### 2. Netlify Configuration Updates
 ```toml
 [functions]
-  timeout = 26          # Max timeout for Pro plan
-  memory = 1024         # Increased memory for image processing
+  timeout = 26
+  memory = 1024
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    "Cache-Control" = "no-cache, no-store, must-revalidate"
+    "X-Content-Type-Options" = "nosniff"
 ```
 
 #### 3. Frontend Error Handling

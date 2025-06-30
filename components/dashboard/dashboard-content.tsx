@@ -412,16 +412,26 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
       console.log('Successfully received edited image URL:', data.image.image_url)
 
+      // Use proxy for fal.ai URLs on production to avoid CORS issues
+      const imageUrl = data.image.image_url
+      const isProduction = window.location.hostname !== 'localhost'
+      const isFalAiUrl = imageUrl.includes('fal.media') || imageUrl.includes('fal.ai')
+      const finalImageUrl = (isProduction && isFalAiUrl) 
+        ? `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`
+        : imageUrl
+
+      console.log('Using image URL:', finalImageUrl, isProduction ? '(via proxy)' : '(direct)')
+
       // Add to edit history
       const newEdit = {
         id: Date.now().toString(),
         prompt: editPrompt,
-        imageUrl: data.image.image_url
+        imageUrl: finalImageUrl
       }
       setEditHistory(prev => [newEdit, ...prev])
-      setEditedImageUrl(data.image.image_url)
+      setEditedImageUrl(finalImageUrl)
       console.log('Edit history updated:', newEdit)
-      console.log('Edited image URL set to:', data.image.image_url)
+      console.log('Edited image URL set to:', finalImageUrl)
       
       toast({
         title: "Success!",
@@ -623,14 +633,22 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         throw new Error("Invalid response: missing image data")
       }
 
+      // Use proxy for fal.ai URLs on production to avoid CORS issues
+      const imageUrl = data.image.image_url
+      const isProduction = window.location.hostname !== 'localhost'
+      const isFalAiUrl = imageUrl.includes('fal.media') || imageUrl.includes('fal.ai')
+      const finalImageUrl = (isProduction && isFalAiUrl) 
+        ? `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`
+        : imageUrl
+
       // Add to edit history
       const newEdit = {
         id: Date.now().toString(),
         prompt: editPrompt,
-        imageUrl: data.image.image_url
+        imageUrl: finalImageUrl
       }
       setEditHistory(prev => [newEdit, ...prev])
-      setEditedImageUrl(data.image.image_url)
+      setEditedImageUrl(finalImageUrl)
       
       // Store undo information
       setLastInpaintResult({

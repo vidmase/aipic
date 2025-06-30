@@ -33,20 +33,55 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("🔐 Checking authentication...")
-    const supabase = await createServerClient()
+    console.log("🌍 Supabase Environment Check:")
+    console.log("- SUPABASE_URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("- SUPABASE_ANON_KEY exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    console.log("- SUPABASE_SERVICE_KEY exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+    
+    let supabase
+    try {
+      supabase = await createServerClient()
+      console.log("✅ Supabase client created successfully")
+    } catch (supabaseError) {
+      console.error("❌ Failed to create Supabase client:", supabaseError)
+      return NextResponse.json({ 
+        error: "Database configuration error", 
+        details: supabaseError instanceof Error ? supabaseError.message : String(supabaseError)
+      }, { status: 500, headers })
+    }
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      console.log("❌ Authentication failed:", authError?.message || "No user")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers })
+    if (authError) {
+      console.error("❌ Supabase auth error:", authError)
+      return NextResponse.json({ 
+        error: "Authentication error", 
+        details: authError.message 
+      }, { status: 401, headers })
     }
+
+    if (!user) {
+      console.log("❌ No user found in session")
+      return NextResponse.json({ error: "No authenticated user" }, { status: 401, headers })
+    }
+    
     console.log("✅ User authenticated:", user.id)
 
     // Check quota
     console.log("📊 Checking quota...")
     const model = "fal-ai/bytedance/seededit/v3/edit-image"
-    const quotaCheck = await quotaManager.checkQuota(user.id, model)
-    console.log("📊 Quota check result:", quotaCheck)
+    
+    let quotaCheck
+    try {
+      quotaCheck = await quotaManager.checkQuota(user.id, model)
+      console.log("📊 Quota check result:", quotaCheck)
+    } catch (quotaError) {
+      console.error("❌ Quota check failed:", quotaError)
+      return NextResponse.json({
+        error: "Quota system error",
+        details: quotaError instanceof Error ? quotaError.message : String(quotaError)
+      }, { status: 500, headers })
+    }
     
     if (!quotaCheck.allowed) {
       console.log("❌ Quota exceeded:", quotaCheck.reason)
@@ -86,9 +121,12 @@ export async function POST(request: NextRequest) {
 
     // Set timeout based on deployment environment
     const isNetlify = process.env.NETLIFY === 'true'
-    const timeoutMs = isNetlify ? 22000 : 60000 // 22s for Netlify (conservative), 60s for other environments
-    console.log(`⏰ Using timeout: ${timeoutMs}ms (Netlify: ${isNetlify})`)
+    // Netlify's free tier has a 10s timeout. We set our internal timeout to 9s 
+    // to fail gracefully instead of getting a generic 502 error.
+    const timeoutMs = isNetlify ? 9000 : 60000 
+    console.log(`⏰ Using timeout: ${timeoutMs}ms (Netlify detection: ${isNetlify})`)
     console.log(`🌍 Environment variables: FAL_KEY exists: ${!!process.env.FAL_KEY}`)
+    console.log(`🌍 Platform detection: NODE_ENV=${process.env.NODE_ENV}, VERCEL=${!!process.env.VERCEL}, NETLIFY=${!!process.env.NETLIFY}`)
     
     let result
     try {
@@ -161,48 +199,86 @@ export async function POST(request: NextRequest) {
 
     // Find or create "SeedEdit V3" album
     console.log("📁 Finding/creating SeedEdit V3 album...")
-    let { data: album } = await supabase
-      .from("albums")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("name", "SeedEdit V3")
-      .single()
-
-    if (!album) {
-      console.log("📁 Creating new SeedEdit V3 album...")
-      const { data: newAlbum } = await supabase
+    let album
+    try {
+      const { data: albumData, error: albumError } = await supabase
         .from("albums")
-        .insert({ 
-          user_id: user.id, 
-          name: "SeedEdit V3",
-          cover_image_url: imageData.url  // Set the first image as cover
-        })
         .select("id")
+        .eq("user_id", user.id)
+        .eq("name", "SeedEdit V3")
         .single()
-      album = newAlbum
-      console.log("✅ Album created with cover image:", album?.id)
-    } else {
-      console.log("✅ Album found:", album.id)
-      
-      // Check if album has a cover image, if not, set this as the cover
-      const { data: albumData } = await supabase
-        .from("albums")
-        .select("cover_image_url")
-        .eq("id", album.id)
-        .single()
-      
-      if (!albumData?.cover_image_url) {
-        console.log("📁 Setting cover image for existing album...")
-        await supabase
-          .from("albums")
-          .update({ cover_image_url: imageData.url })
-          .eq("id", album.id)
-        console.log("✅ Cover image set for album")
+
+      if (albumError && albumError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error("❌ Error finding album:", albumError)
+        throw albumError
       }
+      
+      album = albumData
+
+      if (!album) {
+        console.log("📁 Creating new SeedEdit V3 album...")
+        const { data: newAlbum, error: createError } = await supabase
+          .from("albums")
+          .insert({ 
+            user_id: user.id, 
+            name: "SeedEdit V3",
+            cover_image_url: imageData.url  // Set the first image as cover
+          })
+          .select("id")
+          .single()
+          
+        if (createError) {
+          console.error("❌ Error creating album:", createError)
+          throw createError
+        }
+        
+        album = newAlbum
+        console.log("✅ Album created with cover image:", album?.id)
+      } else {
+        console.log("✅ Album found:", album.id)
+        
+        // Check if album has a cover image, if not, set this as the cover
+        const { data: albumData, error: coverError } = await supabase
+          .from("albums")
+          .select("cover_image_url")
+          .eq("id", album.id)
+          .single()
+        
+        if (coverError) {
+          console.error("❌ Error checking cover image:", coverError)
+          // Continue anyway, this is not critical
+        } else if (!albumData?.cover_image_url) {
+          console.log("📁 Setting cover image for existing album...")
+          const { error: updateError } = await supabase
+            .from("albums")
+            .update({ cover_image_url: imageData.url })
+            .eq("id", album.id)
+            
+          if (updateError) {
+            console.error("❌ Error updating cover image:", updateError)
+            // Continue anyway, this is not critical
+          } else {
+            console.log("✅ Cover image set for album")
+          }
+        }
+      }
+    } catch (albumManagementError) {
+      console.error("❌ Album management failed:", albumManagementError)
+      // Don't fail the whole request, just log the error
+      album = null
     }
 
     // Save edited image to database
     console.log("💾 Saving edited image to database...")
+    console.log("📋 Image data to save:", {
+      user_id: user.id,
+      prompt: prompt.substring(0, 50) + "...",
+      model,
+      image_url: imageData.url.substring(0, 50) + "...",
+      has_guidance_scale: !!guidance_scale,
+      has_seed: !!generatedSeed
+    })
+    
     const { data: savedImage, error: dbError } = await supabase
       .from("generated_images")
       .insert({
@@ -224,8 +300,18 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      console.error("❌ Database error:", dbError)
-      return NextResponse.json({ error: "Failed to save image" }, { status: 500, headers })
+      console.error("❌ Database save error:", dbError)
+      console.error("❌ Database error details:", {
+        code: dbError.code,
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint
+      })
+      return NextResponse.json({ 
+        error: "Failed to save image to database", 
+        details: dbError.message,
+        code: dbError.code
+      }, { status: 500, headers })
     }
     console.log("✅ Image saved to database:", savedImage.id)
 

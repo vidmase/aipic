@@ -11,10 +11,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[functions]
-  timeout = 26
-  memory = 1024
-
 [[headers]]
   for = "/api/*"
   [headers.values]

@@ -21,9 +21,8 @@ AI image processing operations (especially with fal.ai) can take longer than the
 
 #### 2. Netlify Configuration Updates
 ```toml
-[functions]
-  timeout = 26
-  memory = 1024
+# Function timeout and memory cannot be configured via netlify.toml
+# These must be requested from Netlify support for paid plans
 
 [[headers]]
   for = "/api/*"
@@ -31,6 +30,10 @@ AI image processing operations (especially with fal.ai) can take longer than the
     "Cache-Control" = "no-cache, no-store, must-revalidate"
     "X-Content-Type-Options" = "nosniff"
 ```
+
+**Important**: Function timeout and memory allocation cannot be configured in `netlify.toml`. You need to:
+1. Contact Netlify support to request timeout increase (up to 26 seconds for Pro plans)
+2. The timeout fixes in the API code will still prevent 502 errors by handling timeouts gracefully
 
 #### 3. Frontend Error Handling
 - Specific error messages for timeout scenarios

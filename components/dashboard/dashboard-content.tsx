@@ -390,30 +390,42 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         }),
       })
 
-      const data = await response.json()
-      console.log('Edit Image API Response:', { status: response.status, data })
+      const result = await response.json();
 
-      if (!response.ok) {
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Image edited successfully.",
+        });
+        
+        // Use proxy for production environments to avoid CORS issues
+        const imageUrl = process.env.NODE_ENV === 'production'
+          ? `/api/proxy-image?url=${encodeURIComponent(result.image.image_url)}`
+          : result.image.image_url;
+
+        setEditedImageUrl(imageUrl);
+        setEditHistory(prev => [...prev, { id: new Date().toISOString(), prompt: editPrompt, imageUrl: imageUrl }]);
+      } else {
         // Handle specific error codes from the API
-        if (response.status === 408 && data.code === 'TIMEOUT_ERROR') {
+        if (response.status === 408 && result.code === 'TIMEOUT_ERROR') {
           throw new Error("Image editing is taking longer than expected. This can happen with complex images or prompts. Please try again with a simpler prompt or try again later.")
         }
-        if (response.status === 503 && data.code === 'NETWORK_ERROR') {
+        if (response.status === 503 && result.code === 'NETWORK_ERROR') {
           throw new Error("Network connection issue. Please check your internet connection and try again.")
         }
-        throw new Error(data.error || "Failed to edit image")
+        throw new Error(result.error || "Failed to edit image")
       }
 
       // Validate response structure
-      if (!data.image || !data.image.image_url) {
-        console.error('Invalid response structure:', data)
+      if (!result.image || !result.image.image_url) {
+        console.error('Invalid response structure:', result)
         throw new Error("Invalid response: missing image data")
       }
 
-      console.log('Successfully received edited image URL:', data.image.image_url)
+      console.log('Successfully received edited image URL:', result.image.image_url)
 
       // Use proxy for fal.ai URLs on production to avoid CORS issues
-      const imageUrl = data.image.image_url
+      const imageUrl = result.image.image_url
       const isProduction = window.location.hostname !== 'localhost'
       const isFalAiUrl = imageUrl.includes('fal.media') || imageUrl.includes('fal.ai')
       const finalImageUrl = (isProduction && isFalAiUrl) 

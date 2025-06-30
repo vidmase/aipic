@@ -71,20 +71,16 @@ export async function POST(request: NextRequest) {
 
     // Set timeout based on deployment environment
     const isNetlify = process.env.NETLIFY === 'true'
-    const timeoutMs = isNetlify ? 20000 : 60000 // 20s for Netlify, 60s for other environments
+    const timeoutMs = isNetlify ? 18000 : 60000 // 18s for Netlify, 60s for other environments
+    console.log(`⏰ Using timeout: ${timeoutMs}ms (Netlify: ${isNetlify})`)
+    console.log(`🌍 Environment variables: FAL_KEY exists: ${!!process.env.FAL_KEY}`)
     
     let result
     try {
+      // Use fal.run instead of fal.subscribe for faster execution
       result = await withTimeout(
-        fal.subscribe("fal-ai/bytedance/seededit/v3/edit-image", {
+        fal.run("fal-ai/bytedance/seededit/v3/edit-image", {
           input: falInput,
-          logs: true,
-          onQueueUpdate: (update) => {
-            console.log("🔄 Queue update:", update.status)
-            if (update.status === "IN_PROGRESS") {
-              console.log("⏳ SeedEdit processing:", update.logs?.map((log) => log.message).join(", "))
-            }
-          },
         }),
         timeoutMs
       )
@@ -103,15 +99,16 @@ export async function POST(request: NextRequest) {
 
     // Validate API response
     console.log("🔍 Validating API response...")
-    if (!result.data || !result.data.image || !result.data.image.url) {
+    const resultData = result as any
+    if (!resultData.image || !resultData.image.url) {
       console.error("❌ Invalid fal.ai API response:", result)
       return NextResponse.json({ error: "Invalid response from image editing service" }, { status: 500 })
     }
     console.log("✅ API response valid")
 
-    // Extract result data (API returns result.data with image object, not array)
-    const imageData = result.data.image // Single image object
-    const generatedSeed = result.data.seed
+    // Extract result data (fal.run returns direct result, not nested in .data)
+    const imageData = resultData.image // Single image object
+    const generatedSeed = resultData.seed
     console.log("🖼️ Extracted image data:", { url: imageData.url, seed: generatedSeed })
 
     // Find or create "SeedEdit V3" album
@@ -209,6 +206,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("💥 Fatal error in SeedEdit V3 API:", error)
+    console.error("Error type:", typeof error)
+    console.error("Error name:", error instanceof Error ? error.name : "Unknown")
+    console.error("Error message:", error instanceof Error ? error.message : String(error))
     console.error("Stack trace:", error instanceof Error ? error.stack : "No stack trace")
     
     // Handle specific error types
@@ -216,17 +216,30 @@ export async function POST(request: NextRequest) {
       if (error.message.includes('fetch failed') || error.message.includes('network')) {
         return NextResponse.json({ 
           error: "Network error connecting to image editing service. Please try again.",
-          code: "NETWORK_ERROR"
+          code: "NETWORK_ERROR",
+          details: error.message
         }, { status: 503 })
       }
       if (error.message.includes('timed out')) {
         return NextResponse.json({ 
           error: "Image editing is taking longer than expected. Please try again.",
-          code: "TIMEOUT_ERROR"
+          code: "TIMEOUT_ERROR",
+          details: error.message
         }, { status: 408 })
+      }
+      if (error.message.includes('quota') || error.message.includes('limit')) {
+        return NextResponse.json({ 
+          error: "Service quota exceeded. Please try again later.",
+          code: "QUOTA_ERROR",
+          details: error.message
+        }, { status: 429 })
       }
     }
     
-    return NextResponse.json({ error: "Failed to edit image" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "An unknown error has occurred",
+      code: "UNKNOWN_ERROR",
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 } 

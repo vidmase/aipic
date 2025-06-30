@@ -276,6 +276,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       const data = await response.json()
 
       if (!response.ok) {
+        // Handle specific error codes from the API
+        if (response.status === 408 && data.code === 'TIMEOUT_ERROR') {
+          throw new Error("Image generation is taking longer than expected. Please try again with a simpler prompt or try again later.")
+        }
+        if (response.status === 503 && data.code === 'NETWORK_ERROR') {
+          throw new Error("Network connection issue. Please check your internet connection and try again.")
+        }
         throw new Error(data.error || "Failed to generate image")
       }
 
@@ -386,6 +393,13 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       const data = await response.json()
 
       if (!response.ok) {
+        // Handle specific error codes from the API
+        if (response.status === 408 && data.code === 'TIMEOUT_ERROR') {
+          throw new Error("Image editing is taking longer than expected. This can happen with complex images or prompts. Please try again with a simpler prompt or try again later.")
+        }
+        if (response.status === 503 && data.code === 'NETWORK_ERROR') {
+          throw new Error("Network connection issue. Please check your internet connection and try again.")
+        }
         throw new Error(data.error || "Failed to edit image")
       }
 

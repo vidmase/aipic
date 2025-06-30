@@ -9,4 +9,21 @@
   SHARP_FORCE_GLOBAL_LIBVIPS = "false"
 
 [[plugins]]
-  package = "@netlify/plugin-nextjs" 
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  # Increase timeout for API routes (max for Pro plan)
+  timeout = 26
+  # Increase memory allocation for image processing
+  memory = 1024
+
+# Environment variables for deployment
+[build.processing]
+  skip_processing = false
+
+# Headers for better API route performance
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    X-Content-Type-Options = "nosniff" 

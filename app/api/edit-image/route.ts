@@ -3,6 +3,16 @@ import { createServerClient } from "@/lib/supabase/server"
 import { quotaManager } from "@/lib/quota-manager"
 import { fal } from "@fal-ai/client"
 
+// Add timeout wrapper for Netlify compatibility
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ])
+}
+
 export async function POST(request: NextRequest) {
   console.log("🚀 SeedEdit V3 API called")
   try {
@@ -49,7 +59,7 @@ export async function POST(request: NextRequest) {
     })
     console.log("✅ fal.ai client configured")
 
-    // Call fal.ai API using official client
+    // Call fal.ai API using official client with timeout
     console.log("🎨 Calling fal.ai SeedEdit V3 API...")
     const falInput = {
       prompt,
@@ -59,16 +69,36 @@ export async function POST(request: NextRequest) {
     }
     console.log("📤 Sending to fal.ai:", falInput)
 
-    const result = await fal.subscribe("fal-ai/bytedance/seededit/v3/edit-image", {
-      input: falInput,
-      logs: true,
-      onQueueUpdate: (update) => {
-        console.log("🔄 Queue update:", update.status)
-        if (update.status === "IN_PROGRESS") {
-          console.log("⏳ SeedEdit processing:", update.logs?.map((log) => log.message).join(", "))
-        }
-      },
-    })
+    // Set timeout based on deployment environment
+    const isNetlify = process.env.NETLIFY === 'true'
+    const timeoutMs = isNetlify ? 20000 : 60000 // 20s for Netlify, 60s for other environments
+    
+    let result
+    try {
+      result = await withTimeout(
+        fal.subscribe("fal-ai/bytedance/seededit/v3/edit-image", {
+          input: falInput,
+          logs: true,
+          onQueueUpdate: (update) => {
+            console.log("🔄 Queue update:", update.status)
+            if (update.status === "IN_PROGRESS") {
+              console.log("⏳ SeedEdit processing:", update.logs?.map((log) => log.message).join(", "))
+            }
+          },
+        }),
+        timeoutMs
+      )
+    } catch (timeoutError) {
+      if (timeoutError instanceof Error && timeoutError.message.includes('timed out')) {
+        console.error("⏰ Request timed out:", timeoutError.message)
+        return NextResponse.json({ 
+          error: "Image editing is taking longer than expected. Please try again with a simpler prompt or different image.",
+          code: "TIMEOUT_ERROR"
+        }, { status: 408 })
+      }
+      throw timeoutError
+    }
+    
     console.log("📥 fal.ai response received:", JSON.stringify(result, null, 2))
 
     // Validate API response
@@ -180,6 +210,23 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("💥 Fatal error in SeedEdit V3 API:", error)
     console.error("Stack trace:", error instanceof Error ? error.stack : "No stack trace")
+    
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message.includes('fetch failed') || error.message.includes('network')) {
+        return NextResponse.json({ 
+          error: "Network error connecting to image editing service. Please try again.",
+          code: "NETWORK_ERROR"
+        }, { status: 503 })
+      }
+      if (error.message.includes('timed out')) {
+        return NextResponse.json({ 
+          error: "Image editing is taking longer than expected. Please try again.",
+          code: "TIMEOUT_ERROR"
+        }, { status: 408 })
+      }
+    }
+    
     return NextResponse.json({ error: "Failed to edit image" }, { status: 500 })
   }
 } 

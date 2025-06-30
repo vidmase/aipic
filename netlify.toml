@@ -1,5 +1,22 @@
 [build]
-  command = "npm run build"
+  command = "npm ci --legacy-peer-deps && npm run build"
+  publish = ".next"
 
-[plugins]
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--legacy-peer-deps"
+  SHARP_IGNORE_GLOBAL_LIBVIPS = "1"
+  SHARP_FORCE_GLOBAL_LIBVIPS = "false"
+
+[[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  timeout = 26
+  memory = 1024
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    "Cache-Control" = "no-cache, no-store, must-revalidate"
+    "X-Content-Type-Options" = "nosniff" 

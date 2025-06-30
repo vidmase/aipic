@@ -391,6 +391,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       })
 
       const data = await response.json()
+      console.log('Edit Image API Response:', { status: response.status, data })
 
       if (!response.ok) {
         // Handle specific error codes from the API
@@ -403,6 +404,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         throw new Error(data.error || "Failed to edit image")
       }
 
+      // Validate response structure
+      if (!data.image || !data.image.image_url) {
+        console.error('Invalid response structure:', data)
+        throw new Error("Invalid response: missing image data")
+      }
+
+      console.log('Successfully received edited image URL:', data.image.image_url)
+
       // Add to edit history
       const newEdit = {
         id: Date.now().toString(),
@@ -411,6 +420,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       }
       setEditHistory(prev => [newEdit, ...prev])
       setEditedImageUrl(data.image.image_url)
+      console.log('Edit history updated:', newEdit)
+      console.log('Edited image URL set to:', data.image.image_url)
       
       toast({
         title: "Success!",
@@ -3007,6 +3018,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     </div>
                   </div>
 
+                  {/* Debug Info */}
+                  {editMode && process.env.NODE_ENV === 'development' && (
+                    <div className="absolute top-2 left-2 z-50 bg-black/80 text-white p-2 text-xs rounded">
+                      <div>Original: {expandedImage.image_url ? '✓' : '✗'}</div>
+                      <div>Edited: {editedImageUrl ? '✓' : '✗'}</div>
+                      <div>Mode: {inpaintMode ? 'Inpaint' : 'Edit'}</div>
+                      <div>Before/After: {showBeforeAfter ? 'On' : 'Off'}</div>
+                    </div>
+                  )}
+
                   {/* Image Display Area */}
                   <div className={`relative ${editMode ? 'h-48 sm:h-64 lg:flex-1' : 'flex-1'} bg-black`}>
                     {showBeforeAfter && editMode && editedImageUrl ? (
@@ -3020,6 +3041,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             className="object-contain"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
                             priority
+                            onLoad={() => console.log('Before/After edited image loaded:', editedImageUrl)}
+                            onError={() => console.error('Before/After edited image failed to load:', editedImageUrl)}
                           />
                         </div>
                         
@@ -3128,10 +3151,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                           priority
                           onLoad={(e) => {
                             const img = e.target as HTMLImageElement
+                            console.log('Image loaded successfully:', img.src)
                             setImageRef(img)
                             if (inpaintMode) {
                               initializeMaskCanvas(img)
                             }
+                          }}
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement
+                            console.error('Image failed to load:', img.src)
+                            console.error('Current editedImageUrl:', editedImageUrl)
+                            console.error('Fallback to original image:', expandedImage.image_url)
                           }}
                         />
                         

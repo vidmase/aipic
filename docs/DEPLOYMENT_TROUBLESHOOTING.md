@@ -83,4 +83,55 @@ Check these in Netlify dashboard:
 - Error rates
 - Timeout frequency
 
-If functions consistently timeout, consider architectural changes or plan upgrades. 
+If functions consistently timeout, consider architectural changes or plan upgrades.
+
+## Image Fetching Issues (API Works but Images Don't Display)
+
+### Symptoms
+- API returns 200 status and successful response
+- Images don't appear in the frontend after editing
+- Console shows successful API response but images fail to load
+
+### Debugging Steps
+
+1. **Check Console Logs** - Added comprehensive logging:
+   ```javascript
+   console.log('Edit Image API Response:', { status: response.status, data })
+   console.log('Successfully received edited image URL:', data.image.image_url)
+   console.log('Image loaded successfully:', img.src)
+   console.error('Image failed to load:', img.src)
+   ```
+
+2. **Visual Debug Panel** (Development Mode):
+   - Shows original/edited image status
+   - Shows current mode and before/after state
+   - Visible in top-left corner when in edit mode
+
+3. **Check Network Tab**:
+   - Verify API call succeeds (200 status)
+   - Check if image URL requests fail
+   - Look for CORS errors or 403/404 responses
+
+### Common Causes & Solutions
+
+1. **CORS Issues** - fal.ai URLs may have CORS restrictions
+   - Solution: Implement image proxy through your domain
+   
+2. **CDN/Cache Issues** - Images may be cached incorrectly
+   - Solution: Add cache-busting parameters or headers
+   
+3. **Network Timeouts** - Large images may fail to load
+   - Solution: Add loading states and retry logic
+   
+4. **URL Format Issues** - Check if URLs are properly formatted
+   - Solution: Validate and sanitize URLs before use
+
+### Implementation Notes
+
+The debugging code includes:
+- Response structure validation
+- Image load/error event handlers  
+- Visual debug panel for development
+- Comprehensive console logging
+
+This should help identify exactly where the image fetching fails. 

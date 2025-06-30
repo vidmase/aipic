@@ -14,6 +14,14 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
 }
 
 export async function POST(request: NextRequest) {
+  // Add response headers for Netlify compatibility
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+  }
+
   console.log("🚀 SeedEdit V3 API called")
   try {
     const { prompt, image_url, guidance_scale = 0.5, seed } = await request.json()
@@ -21,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     if (!prompt || !image_url) {
       console.log("❌ Missing required fields:", { prompt: !!prompt, image_url: !!image_url })
-      return NextResponse.json({ error: "Prompt and image URL are required" }, { status: 400 })
+      return NextResponse.json({ error: "Prompt and image URL are required" }, { status: 400, headers })
     }
 
     console.log("🔐 Checking authentication...")
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       console.log("❌ Authentication failed:", authError?.message || "No user")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers })
     }
     console.log("✅ User authenticated:", user.id)
 
@@ -48,16 +56,23 @@ export async function POST(request: NextRequest) {
           usage: quotaCheck.usage,
           limits: quotaCheck.limits
         }
-      }, { status: 429 })
+      }, { status: 429, headers })
     }
     console.log("✅ Quota check passed")
 
     // Configure fal.ai client
     console.log("🔧 Configuring fal.ai client...")
+    
+    if (!process.env.FAL_KEY) {
+      console.error("❌ FAL_KEY environment variable is missing")
+      return NextResponse.json({ error: "Configuration error: Missing API credentials" }, { status: 500, headers })
+    }
+    
     fal.config({
       credentials: process.env.FAL_KEY
     })
     console.log("✅ fal.ai client configured")
+    
 
     // Call fal.ai API using official client with timeout
     console.log("🎨 Calling fal.ai SeedEdit V3 API...")
@@ -71,26 +86,45 @@ export async function POST(request: NextRequest) {
 
     // Set timeout based on deployment environment
     const isNetlify = process.env.NETLIFY === 'true'
-    const timeoutMs = isNetlify ? 18000 : 60000 // 18s for Netlify, 60s for other environments
+    const timeoutMs = isNetlify ? 22000 : 60000 // 22s for Netlify (conservative), 60s for other environments
     console.log(`⏰ Using timeout: ${timeoutMs}ms (Netlify: ${isNetlify})`)
     console.log(`🌍 Environment variables: FAL_KEY exists: ${!!process.env.FAL_KEY}`)
     
     let result
     try {
-      // Use fal.run instead of fal.subscribe for faster execution
-      result = await withTimeout(
-        fal.run("fal-ai/bytedance/seededit/v3/edit-image", {
-          input: falInput,
-        }),
-        timeoutMs
-      )
+      console.log("🚀 Starting fal.ai API call with input:", JSON.stringify(falInput, null, 2))
+      
+      // Try fal.run first, fallback to fal.subscribe if needed
+      try {
+        console.log("📡 Attempting fal.run...")
+        result = await withTimeout(
+          fal.run("fal-ai/bytedance/seededit/v3/edit-image", {
+            input: falInput,
+          }),
+          timeoutMs
+        )
+        console.log("✅ fal.run succeeded")
+      } catch (runError) {
+        console.log("❌ fal.run failed, trying fal.subscribe:", runError)
+        result = await withTimeout(
+          fal.subscribe("fal-ai/bytedance/seededit/v3/edit-image", {
+            input: falInput,
+            logs: true,
+            onQueueUpdate: (update) => {
+              console.log("🔄 Queue update:", update.status)
+            },
+          }),
+          timeoutMs
+        )
+        console.log("✅ fal.subscribe succeeded")
+      }
     } catch (timeoutError) {
       if (timeoutError instanceof Error && timeoutError.message.includes('timed out')) {
         console.error("⏰ Request timed out:", timeoutError.message)
         return NextResponse.json({ 
           error: "Image editing is taking longer than expected. Please try again with a simpler prompt or different image.",
           code: "TIMEOUT_ERROR"
-        }, { status: 408 })
+        }, { status: 408, headers })
       }
       throw timeoutError
     }
@@ -100,15 +134,29 @@ export async function POST(request: NextRequest) {
     // Validate API response
     console.log("🔍 Validating API response...")
     const resultData = result as any
-    if (!resultData.image || !resultData.image.url) {
+    
+    // Handle both fal.run (direct) and fal.subscribe (nested in .data) response formats
+    let imageData, generatedSeed
+    if (resultData.data && resultData.data.image) {
+      // fal.subscribe format
+      console.log("📦 Using fal.subscribe response format")
+      imageData = resultData.data.image
+      generatedSeed = resultData.data.seed
+    } else if (resultData.image) {
+      // fal.run format
+      console.log("📦 Using fal.run response format")
+      imageData = resultData.image
+      generatedSeed = resultData.seed
+    } else {
       console.error("❌ Invalid fal.ai API response:", result)
-      return NextResponse.json({ error: "Invalid response from image editing service" }, { status: 500 })
+      return NextResponse.json({ error: "Invalid response from image editing service" }, { status: 500, headers })
+    }
+    
+    if (!imageData || !imageData.url) {
+      console.error("❌ No image URL in response:", imageData)
+      return NextResponse.json({ error: "No image URL in response" }, { status: 500, headers })
     }
     console.log("✅ API response valid")
-
-    // Extract result data (fal.run returns direct result, not nested in .data)
-    const imageData = resultData.image // Single image object
-    const generatedSeed = resultData.seed
     console.log("🖼️ Extracted image data:", { url: imageData.url, seed: generatedSeed })
 
     // Find or create "SeedEdit V3" album
@@ -177,7 +225,7 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error("❌ Database error:", dbError)
-      return NextResponse.json({ error: "Failed to save image" }, { status: 500 })
+      return NextResponse.json({ error: "Failed to save image" }, { status: 500, headers })
     }
     console.log("✅ Image saved to database:", savedImage.id)
 
@@ -203,7 +251,7 @@ export async function POST(request: NextRequest) {
         usage: quotaCheck.usage,
         limits: quotaCheck.limits
       }
-    })
+    }, { headers })
   } catch (error) {
     console.error("💥 Fatal error in SeedEdit V3 API:", error)
     console.error("Error type:", typeof error)
@@ -218,21 +266,21 @@ export async function POST(request: NextRequest) {
           error: "Network error connecting to image editing service. Please try again.",
           code: "NETWORK_ERROR",
           details: error.message
-        }, { status: 503 })
+        }, { status: 503, headers })
       }
       if (error.message.includes('timed out')) {
         return NextResponse.json({ 
           error: "Image editing is taking longer than expected. Please try again.",
           code: "TIMEOUT_ERROR",
           details: error.message
-        }, { status: 408 })
+        }, { status: 408, headers })
       }
       if (error.message.includes('quota') || error.message.includes('limit')) {
         return NextResponse.json({ 
           error: "Service quota exceeded. Please try again later.",
           code: "QUOTA_ERROR",
           details: error.message
-        }, { status: 429 })
+        }, { status: 429, headers })
       }
     }
     
@@ -240,6 +288,6 @@ export async function POST(request: NextRequest) {
       error: "An unknown error has occurred",
       code: "UNKNOWN_ERROR",
       details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    }, { status: 500, headers })
   }
 } 

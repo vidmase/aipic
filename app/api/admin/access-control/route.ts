@@ -187,7 +187,8 @@ export async function POST(request: NextRequest) {
 
       case 'create_model': {
         const { model_id, display_name: model_display_name, description: model_description, provider } = data
-        const { error: modelError } = await adminSupabase
+        // Insert the new model
+        const { data: insertedModels, error: modelError } = await adminSupabase
           .from('image_models')
           .insert({
             model_id,
@@ -196,9 +197,35 @@ export async function POST(request: NextRequest) {
             provider,
             is_active: true
           })
+          .select()
         
         if (modelError) throw modelError
-        return NextResponse.json({ success: true, message: "Model created successfully" })
+        const newModel = insertedModels && insertedModels[0]
+        if (!newModel) throw new Error('Failed to fetch new model after insert')
+
+        // Fetch all user tiers
+        const { data: tiers, error: tiersError } = await adminSupabase
+          .from('user_tiers')
+          .select('id, name')
+        if (tiersError) throw tiersError
+        if (!tiers) throw new Error('No user tiers found')
+
+        // Prepare access rows
+        const accessRows = tiers.map(tier => ({
+          tier_id: tier.id,
+          model_id: newModel.id,
+          is_enabled:
+            tier.name === 'admin' || tier.name === 'premium'
+              ? true
+              : (model_id.includes('fast-sdxl') || model_id.includes('flux/schnell') || model_id.includes('ideogram'))
+        }))
+        // Insert access rows
+        const { error: accessError } = await adminSupabase
+          .from('tier_model_access')
+          .insert(accessRows)
+        if (accessError) throw accessError
+
+        return NextResponse.json({ success: true, message: "Model created and tier access set up successfully" })
       }
 
       case 'update_user_tier': {

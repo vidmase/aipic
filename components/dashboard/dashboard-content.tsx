@@ -35,6 +35,18 @@ interface DashboardContentProps {
 // --- Image Generation Quota Config ---
 const IMAGE_GENERATION_QUOTA_PER_DAY = 3; // Keep in sync with API
 
+// Add a type for available models
+interface AvailableModel {
+  id: string;
+  name: string;
+  description: string;
+  icon: any;
+  iconColor: string;
+  bgColor: string;
+  category: string;
+  price?: string;
+}
+
 export function DashboardContent({ initialImages }: DashboardContentProps) {
   const { t } = useTranslation()
   const [prompt, setPrompt] = useState("")
@@ -157,6 +169,43 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     "Abstract geometric patterns in vibrant colors, modern art style"
   ]
 
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([])
+
+  // Add state for FLUX Kontext Edit reference image
+  const [referenceMethodKontext, setReferenceMethodKontext] = useState<'url' | 'upload'>('upload');
+  const [uploadedFileKontext, setUploadedFileKontext] = useState<File | null>(null);
+  const [uploadedFilePreviewKontext, setUploadedFilePreviewKontext] = useState<string | null>(null);
+  const [imageUrlKontext, setImageUrlKontext] = useState<string>('');
+  const [uploadingKontext, setUploadingKontext] = useState<boolean>(false);
+
+  // Handler for FLUX Kontext Edit file upload
+  const handleFileUploadKontext = async (file: File) => {
+    setUploadingKontext(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setUploadedFileKontext(file);
+        setUploadedFilePreviewKontext(URL.createObjectURL(file));
+        setImageUrlKontext(data.url);
+      } else {
+        toast({ title: 'Upload failed', description: data.error || 'Unknown error', variant: 'destructive' });
+        setUploadedFileKontext(null);
+        setUploadedFilePreviewKontext(null);
+        setImageUrlKontext('');
+      }
+    } catch (err) {
+      toast({ title: 'Upload failed', description: String(err), variant: 'destructive' });
+      setUploadedFileKontext(null);
+      setUploadedFilePreviewKontext(null);
+      setImageUrlKontext('');
+    } finally {
+      setUploadingKontext(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push("/")
@@ -269,6 +318,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             image_url: finalImageUrl,
             guidance_scale: guidanceScale,
             seed: seed ? Number(seed) : undefined,
+          }),
+          ...(model === 'fal-ai/flux-pro/kontext' && {
+            image_url: imageUrlKontext,
           }),
         }),
       })
@@ -405,6 +457,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
         setEditedImageUrl(imageUrl);
         setEditHistory(prev => [...prev, { id: new Date().toISOString(), prompt: editPrompt, imageUrl: imageUrl }]);
+        // Add the edited image to the images state (gallery/history)
+        setImages((prev) => [{
+          id: result.id || `edit-${Date.now()}`,
+          user_id: userEmail || '',
+          prompt: editPrompt,
+          model: model,
+          image_url: imageUrl,
+          parameters: null,
+          created_at: new Date().toISOString(),
+        }, ...prev]);
+        // Optionally, add to editHistory as well
+        setEditHistory((prev) => [{ id: result.id || `edit-${Date.now()}`, prompt: editPrompt, imageUrl: imageUrl }, ...prev]);
       } else {
         // Handle specific error codes from the API
         if (response.status === 408 && result.code === 'TIMEOUT_ERROR') {
@@ -434,17 +498,6 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
       console.log('Using image URL:', finalImageUrl, isProduction ? '(via proxy)' : '(direct)')
 
-      // Add to edit history
-      const newEdit = {
-        id: Date.now().toString(),
-        prompt: editPrompt,
-        imageUrl: finalImageUrl
-      }
-      setEditHistory(prev => [newEdit, ...prev])
-      setEditedImageUrl(finalImageUrl)
-      console.log('Edit history updated:', newEdit)
-      console.log('Edited image URL set to:', finalImageUrl)
-      
       toast({
         title: "Success!",
         description: "Image edited successfully",
@@ -1172,158 +1225,53 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     return (now.getTime() - addedDate.getTime()) < weekInMs
   }
 
-  // Available models with mobile-friendly data
-  const availableModels = [
-    {
-      id: "fal-ai/fast-sdxl",
-      name: "Fast SDXL",
-      description: "Quick generation, good quality",
-      category: "Fast & Free",
-      icon: Zap,
-      iconColor: "text-green-600",
-      bgColor: "bg-green-100",
-      price: isFreeUser ? "Free" : "$0.0025"
-    },
-    {
-      id: "fal-ai/hidream-i1-fast",
-      name: "HiDream I1 Fast", 
-      description: "Ultra-fast Asian aesthetics",
-      category: "Fast & Free",
-      icon: Rocket,
-      iconColor: "text-cyan-600", 
-      bgColor: "bg-cyan-100",
-      price: isFreeUser ? "Free" : "$0.01/MP"
-    },
-    {
-      id: "fal-ai/flux/dev",
-      name: "FLUX Dev",
-      description: "High quality, versatile",
-      category: "FLUX Models",
-      icon: ImageIcon,
-      iconColor: "text-yellow-600",
-      bgColor: "bg-yellow-100", 
-      price: "$0.025/MP"
-    },
-    {
-      id: "fal-ai/flux/schnell",
-      name: "Flux Schnell",
-      description: "Fast Flux model for quick generation",
-      category: "Fast & Free",
-      icon: Zap,
-      iconColor: "text-blue-600",
-      bgColor: "bg-blue-100",
-      price: isFreeUser ? "Free" : "$0.01/MP"
-    },
-    {
-      id: "fal-ai/flux-pro/v1.1-ultra",
-      name: "FLUX Pro Ultra",
-      description: "Premium quality, photorealistic", 
-      category: "Premium",
-      icon: Rocket,
-      iconColor: "text-pink-600",
-      bgColor: "bg-pink-100",
-      price: "$0.04-0.06"
-    },
-    {
-      id: "fal-ai/flux-pro/kontext/text-to-image",
-      name: "FLUX Kontext T2I",
-      description: "Context-aware generation",
-      category: "Premium", 
-      icon: Brain,
-      iconColor: "text-orange-600",
-      bgColor: "bg-orange-100",
-      price: "$0.04"
-    },
-    {
-      id: "fal-ai/ideogram/v2", 
-      name: "Ideogram v2",
-      description: "Excellent text rendering",
-      category: "Text & Logos",
-      icon: PenTool,
-      iconColor: "text-blue-600",
-      bgColor: "bg-blue-100",
-      price: "$0.08"
-    },
-    {
-      id: "fal-ai/ideogram/v3",
-      name: "Ideogram v3", 
-      description: "Latest text & logo model",
-      category: "Text & Logos",
-      icon: PenTool,
-      iconColor: "text-blue-700",
-      bgColor: "bg-blue-100"
-    },
-    {
-      id: "fal-ai/recraft-v3",
-      name: "Recraft V3",
-      description: "Vector & design generation", 
-      category: "Text & Logos",
-      icon: Palette,
-      iconColor: "text-purple-600",
-      bgColor: "bg-purple-100",
-      price: "$0.04-0.08"
-    },
-    {
-      id: "fal-ai/imagen4/preview",
-      name: "Imagen 4 Preview",
-      description: "Google's latest AI model",
-      category: "Advanced",
-      icon: ImageIcon, 
-      iconColor: "text-pink-600",
-      bgColor: "bg-pink-100",
-      price: "$0.05"
-    },
-    {
-      id: "fal-ai/imagen4/preview/fast",
-      name: "Imagen4-preview",
-      description: "Fast version of Google's Imagen 4",
-      category: "Advanced",
-      icon: ImageIcon,
-      iconColor: "text-pink-500",
-      bgColor: "bg-pink-100",
-      price: "$0.04"
-    },
-    {
-      id: "fal-ai/imagen4/preview/ultra",
-      name: "Imagen4-Ultra", 
-      description: "Ultra-high quality generation",
-      category: "Advanced",
-      icon: ImageIcon,
-      iconColor: "text-pink-700",
-      bgColor: "bg-pink-100",
-      price: "$0.08"
-    },
-    {
-      id: "fal-ai/stable-diffusion-v35-large",
-      name: "Stable Diffusion 3.5 Large",
-      description: "Open-source powerhouse",
-      category: "Advanced",
-      icon: Brain,
-      iconColor: "text-indigo-600", 
-      bgColor: "bg-indigo-100",
-      price: "$0.065"
-    },
-    {
-      id: "fal-ai/bytedance/seededit/v3/edit-image",
-      name: "SeedEdit V3",
-      description: "AI-powered image editing",
-      category: "Editing",
-      icon: Edit,
-      iconColor: "text-green-600",
-      bgColor: "bg-green-100",
-      price: "$0.04"
-    },
-    {
-      id: "rundiffusion-fal/juggernaut-flux-lora/inpainting",
-      name: "Juggernaut Flux Inpainting",
-      description: "AI-powered object replacement and inpainting",
-      category: "Editing",
-      icon: Edit,
-      iconColor: "text-blue-600",
-      bgColor: "bg-blue-100",
-      price: "$0.04"
+  const modelMeta: Record<string, Partial<AvailableModel>> = {
+    "fal-ai/fast-sdxl":      { icon: Zap,      iconColor: "text-green-600", bgColor: "bg-green-100", category: "Fast & Free", price: isFreeUser ? "Free" : "$0.0025" },
+    "fal-ai/hidream-i1-fast":{ icon: Rocket,   iconColor: "text-cyan-600",  bgColor: "bg-cyan-100",  category: "Fast & Free", price: isFreeUser ? "Free" : "$0.01/MP" },
+    "fal-ai/flux/dev":       { icon: ImageIcon,iconColor: "text-yellow-600",bgColor: "bg-yellow-100",category: "FLUX Models", price: "$0.025/MP" },
+    "fal-ai/flux/schnell":   { icon: Zap,      iconColor: "text-blue-600", bgColor: "bg-blue-100",  category: "Fast & Free", price: isFreeUser ? "Free" : "$0.01/MP" },
+    "fal-ai/flux-pro/v1.1-ultra": { icon: Rocket, iconColor: "text-pink-600", bgColor: "bg-pink-100", category: "Premium", price: "$0.04-0.06" },
+    "fal-ai/flux-pro/kontext":    { icon: Brain, iconColor: "text-orange-600", bgColor: "bg-orange-100", category: "Premium", price: "$0.04" },
+    "fal-ai/flux-pro/kontext/text-to-image": { icon: Brain, iconColor: "text-orange-600", bgColor: "bg-orange-100", category: "Premium", price: "$0.04" },
+    "fal-ai/ideogram/v2":    { icon: PenTool,  iconColor: "text-blue-600", bgColor: "bg-blue-100",  category: "Text & Logos", price: "$0.08" },
+    "fal-ai/ideogram/v3":    { icon: PenTool,  iconColor: "text-blue-700", bgColor: "bg-blue-100",  category: "Text & Logos" },
+    "fal-ai/recraft-v3":     { icon: Palette,  iconColor: "text-purple-600",bgColor: "bg-purple-100",category: "Text & Logos", price: "$0.04-0.08" },
+    "fal-ai/imagen4/preview":{ icon: ImageIcon,iconColor: "text-pink-600", bgColor: "bg-pink-100",  category: "Advanced", price: "$0.05" },
+    "fal-ai/imagen4/preview/fast": { icon: ImageIcon, iconColor: "text-pink-500", bgColor: "bg-pink-100", category: "Advanced", price: "$0.04" },
+    "fal-ai/imagen4/preview/ultra":{ icon: ImageIcon,iconColor: "text-pink-700", bgColor: "bg-pink-100",  category: "Advanced", price: "$0.08" },
+    "fal-ai/stable-diffusion-v35-large": { icon: Brain, iconColor: "text-indigo-600", bgColor: "bg-indigo-100", category: "Advanced", price: "$0.065" },
+    "fal-ai/bytedance/seededit/v3/edit-image": { icon: Edit, iconColor: "text-green-600", bgColor: "bg-green-100", category: "Editing", price: "$0.04" },
+    "rundiffusion-fal/juggernaut-flux-lora/inpainting": { icon: Edit, iconColor: "text-blue-600", bgColor: "bg-blue-100", category: "Editing", price: "$0.04" },
+  }
+  const defaultMeta: Partial<AvailableModel> = { icon: Bot, iconColor: "text-gray-600", bgColor: "bg-gray-100", category: "Other", price: undefined }
+
+  // Fetch models from Supabase on mount
+  useEffect(() => {
+    async function fetchModels() {
+      const { data, error } = await supabase
+        .from('image_models')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_name')
+      if (error) return setAvailableModels([])
+      setAvailableModels(
+        (data || []).map((m: any): AvailableModel => {
+          const meta: Partial<AvailableModel> = modelMeta[m.model_id] || defaultMeta
+          return {
+            id: m.model_id,
+            name: m.display_name,
+            description: m.description,
+            icon: meta.icon || Bot,
+            iconColor: meta.iconColor || "text-gray-600",
+            bgColor: meta.bgColor || "bg-gray-100",
+            category: meta.category || "Other",
+            price: meta.price
+          }
+        })
+      )
     }
-  ]
+    fetchModels()
+  }, [isFreeUser])
 
   // Update current model index when model changes
   useEffect(() => {
@@ -1520,7 +1468,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {userAccessibleModels.length} of {availableModels.length} models
+                            {Math.min(userAccessibleModels.length, availableModels.length)} of {availableModels.length} models
                           </span>
                         </div>
                         <Button 
@@ -1536,7 +1484,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       {!profileLoading ? (
                         <div className="space-y-3 pb-4">
                           {/* Simplified Model List */}
-                          {availableModels.map((modelOption) => {
+                          {availableModels.map((modelOption: AvailableModel) => {
                             const isAccessible = isModelAccessible(modelOption.id);
                             const isSelected = model === modelOption.id;
                             
@@ -1674,7 +1622,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     </DialogHeader>
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 mx-4 rounded-lg">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {userAccessibleModels.length} of {availableModels.length} models
+                        {Math.min(userAccessibleModels.length, availableModels.length)} of {availableModels.length} models
                       </span>
                       <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white border-0 text-xs px-2 py-1 h-6">
                         {t('dashboard.generate.unlockAll')}
@@ -1684,7 +1632,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       {!profileLoading ? (
                         <div className="space-y-3">
                           {/* Mobile Model List */}
-                          {availableModels.map((modelOption) => {
+                          {availableModels.map((modelOption: AvailableModel) => {
                             const isAccessible = isModelAccessible(modelOption.id);
                             const isSelected = model === modelOption.id;
                             
@@ -2400,46 +2348,44 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                             key={uploadedFile ? 'with-file' : 'no-file'}
                                           />
                                           {uploadedFile && uploadedFilePreview && (
-                                            <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                                              <div className="flex items-start gap-3">
-                                                <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                                                  <Image
-                                                    src={uploadedFilePreview}
-                                                    alt="Uploaded reference image"
-                                                    fill
-                                                    className="object-cover"
-                                                    sizes="64px"
-                                                  />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                                    {uploadedFile.name}
-                                                  </p>
-                                                  <p className="text-xs text-gray-500 mt-1">
-                                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                                  </p>
-                                                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                                                    ✓ {t('dashboard.generate.readyForEditing')}
-                                                  </p>
-                                                </div>
-                                                <Button
-                                                  type="button"
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => {
-                                                    setUploadedFile(null)
-                                                    if (uploadedFilePreview) {
-                                                      URL.revokeObjectURL(uploadedFilePreview)
-                                                    }
-                                                    setUploadedFilePreview(null)
-                                                    const fileInput = document.getElementById('image-upload') as HTMLInputElement
-                                                    if (fileInput) fileInput.value = ''
-                                                  }}
-                                                  className="text-gray-400 hover:text-gray-600"
-                                                >
-                                                  ×
-                                                </Button>
+                                            <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 h-20 max-h-24 overflow-hidden flex items-center">
+                                              <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                                <Image
+                                                  src={uploadedFilePreview}
+                                                  alt="Uploaded reference image"
+                                                  fill
+                                                  className="object-cover"
+                                                  sizes="64px"
+                                                />
                                               </div>
+                                              <div className="flex-1 min-w-0 ml-3">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[120px] block whitespace-nowrap overflow-hidden">
+                                                  {uploadedFile.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                                </p>
+                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                  ✓ {t('dashboard.generate.readyForEditing')}
+                                                </p>
+                                              </div>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setUploadedFile(null)
+                                                  if (uploadedFilePreview) {
+                                                    URL.revokeObjectURL(uploadedFilePreview)
+                                                  }
+                                                  setUploadedFilePreview(null)
+                                                  const fileInput = document.getElementById('image-upload') as HTMLInputElement
+                                                  if (fileInput) fileInput.value = ''
+                                                }}
+                                                className="text-gray-400 hover:text-gray-600 ml-2"
+                                              >
+                                                ×
+                                              </Button>
                                             </div>
                                           )}
                                         </div>
@@ -2476,6 +2422,104 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       </div>
                                     </div>
                                   )}
+                                  {model === 'fal-ai/flux-pro/kontext' && (
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="reference-method-kontext">{t('dashboard.generate.referenceImage')}</Label>
+                                        <div className="flex gap-2 mt-2">
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethodKontext === 'url' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethodKontext('url')}
+                                          >
+                                            {t('dashboard.generate.urlMethod')}
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethodKontext === 'upload' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethodKontext('upload')}
+                                          >
+                                            {t('dashboard.generate.uploadMethod')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      {referenceMethodKontext === 'url' ? (
+                                        <div>
+                                          <Label htmlFor="image-url-kontext">{t('dashboard.generate.imageUrl')}</Label>
+                                          <Input
+                                            id="image-url-kontext"
+                                            type="url"
+                                            value={imageUrlKontext}
+                                            onChange={(e) => setImageUrlKontext(e.target.value)}
+                                            placeholder={t('dashboard.generate.imageUrlPlaceholder')}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <Label htmlFor="image-upload-kontext">{t('dashboard.generate.uploadImage')}</Label>
+                                          <Input
+                                            id="image-upload-kontext"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                handleFileUploadKontext(file);
+                                              }
+                                            }}
+                                            className="mt-1"
+                                            key={uploadedFileKontext ? 'with-file' : 'no-file'}
+                                            disabled={uploadingKontext}
+                                          />
+                                          {uploadedFileKontext && uploadedFilePreviewKontext && (
+                                            <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 h-20 max-h-24 overflow-hidden flex items-center">
+                                              <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                                <Image
+                                                  src={uploadedFilePreviewKontext}
+                                                  alt="Uploaded reference image"
+                                                  fill
+                                                  className="object-cover"
+                                                  sizes="64px"
+                                                />
+                                              </div>
+                                              <div className="flex-1 min-w-0 ml-3">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[120px] block whitespace-nowrap overflow-hidden">
+                                                  {uploadedFileKontext.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                  {(uploadedFileKontext.size / 1024 / 1024).toFixed(2)} MB
+                                                </p>
+                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                  ✓ {t('dashboard.generate.readyForEditing')}
+                                                </p>
+                                              </div>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setUploadedFileKontext(null);
+                                                  if (uploadedFilePreviewKontext) {
+                                                    URL.revokeObjectURL(uploadedFilePreviewKontext);
+                                                  }
+                                                  setUploadedFilePreviewKontext(null);
+                                                  setImageUrlKontext('');
+                                                  const fileInput = document.getElementById('image-upload-kontext') as HTMLInputElement;
+                                                  if (fileInput) fileInput.value = '';
+                                                }}
+                                                className="text-gray-400 hover:text-gray-600 ml-2"
+                                              >
+                                                ×
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
@@ -2504,7 +2548,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
                       {/* Latest 3 Creations - Grid Preview */}
                       {images.length > 0 && (
-                        <div className="max-w-4xl mx-auto mt-6 sm:mt-8 px-4 sm:px-6">
+                        <div className="w-full max-w-4xl mx-auto mt-8 mb-8 px-4 sm:px-6">
                           <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
                             <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
                               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
@@ -2513,9 +2557,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="px-4 sm:px-6">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
                                 {images.slice(0, 3).map((image, index) => (
-                                  <div key={image.id} className="group cursor-pointer" onClick={() => { setExpandedImage(image); setShowFullPrompt(false); }}>
+                                  <div key={image.id} className="group cursor-pointer min-w-[220px] max-w-[240px] flex-shrink-0" onClick={() => { setExpandedImage(image); setShowFullPrompt(false); }}>
                                     <div className="relative aspect-square rounded-xl overflow-hidden shadow-md mb-3 group-hover:shadow-lg transition-shadow">
                                       <Image
                                         src={image.image_url || "/placeholder.svg"}
@@ -2690,7 +2734,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               <Bot className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
                               <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
                             </div>
-                            <div className="text-3xl font-bold text-blue-600 mb-1 group-hover:scale-105 transition-transform duration-300">{new Set(images.map((img) => img.model)).size}</div>
+                            <div className="text-3xl font-bold text-blue-600 mb-1 group-hover:scale-105 transition-transform duration-300">{Math.min(userAccessibleModels.length, availableModels.length)}</div>
                             <div className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('dashboard.profile.modelsUsed')}</div>
                             <div className="text-xs text-blue-500 mt-1">{t('dashboard.profile.exploreMore')}</div>
                           </div>

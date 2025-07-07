@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = await request.json()
+    const body = await request.json();
+    const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = body;
 
     // Check model access
     const hasModelAccess = await quotaManager.checkModelAccess(user.id, model)
@@ -60,18 +61,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
 
+    // Build FAL.AI input payload
+    const input: Record<string, any> = {
+      prompt,
+      aspect_ratio: aspectRatio,
+      num_inference_steps: 28,
+      guidance_scale: 3.5,
+      num_images,
+      enable_safety_checker: true,
+    };
+
+    // Special handling for FLUX Kontext Edit
+    if (model === "fal-ai/flux-pro/kontext") {
+      const { image_url } = body;
+      if (!image_url) {
+        return NextResponse.json({ error: "Reference image is required for this model." }, { status: 400 });
+      }
+      input.image_url = image_url;
+    }
+
+    console.log("FAL.AI payload:", { model, input });
+
     // Generate image using fal.ai
     let result: any
     try {
       result = await fal.subscribe(model, {
-        input: {
-          prompt,
-          aspect_ratio: aspectRatio,
-          num_inference_steps: 28,
-          guidance_scale: 3.5,
-          num_images,
-          enable_safety_checker: true,
-        },
+        input,
       })
     } catch (falError: any) {
       console.error("FAL.AI error:", falError)

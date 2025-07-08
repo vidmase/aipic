@@ -1291,58 +1291,67 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
 
   return (
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-safe-top pb-safe-bottom">
       <div className="relative z-10">
-        {/* Header */}
-        <header className="bg-white/90 dark:bg-gray-900/90 shadow-sm sticky top-0 z-50">
-          <div className="container mx-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-            {/* Logo */}
-            <div className="flex items-center space-x-3 w-full sm:w-auto justify-between">
+        {/* Header - Mobile Optimized */}
+        <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
+          <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-2">
+            {/* Mobile Header Layout */}
+            <div className="flex items-center justify-between w-full">
+              {/* Logo */}
               <button 
-                onClick={() => setActiveTab("generate")}
-                className="flex items-center space-x-3 group cursor-pointer hover:scale-105 transition-transform duration-200"
+                onClick={() => {
+                  setActiveTab("generate")
+                  setUserMenuOpen(false)
+                }}
+                className="flex items-center space-x-2 group cursor-pointer hover:scale-105 transition-transform duration-200 touch-manipulation"
                 title="Generate AI Image"
               >
-               
-                <AuroraText className="text-2xl group-hover:scale-105 transition-transform duration-200">
+                <AuroraText className="text-xl sm:text-2xl group-hover:scale-105 transition-transform duration-200">
                   AI Image Studio
                 </AuroraText>
               </button>
-              {/* Hamburger for mobile */}
-              <button className="sm:hidden ml-auto" onClick={() => setUserMenuOpen((open) => !open)}>
-                <Menu className="w-7 h-7 text-purple-600" />
+              
+              {/* Mobile Menu Button */}
+              <button 
+                className="sm:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors touch-manipulation" 
+                onClick={() => setUserMenuOpen((open) => !open)}
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </button>
             </div>
-            {/* Menu */}
-            <nav className="hidden sm:flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden sm:flex items-center gap-2 md:gap-3 mt-3 sm:mt-0">
               <Button
                 variant={activeTab === "generate" ? "default" : "ghost"}
                 onClick={() => setActiveTab("generate")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm touch-manipulation ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <Plus className="w-4 h-4" />
-                <span>{t('dashboard.tabs.generate')}</span>
+                <span className="hidden md:inline">{t('dashboard.tabs.generate')}</span>
               </Button>
               <Button
                 variant={activeTab === "history" ? "default" : "ghost"}
                 onClick={() => setActiveTab("history")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm touch-manipulation ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <History className="w-4 h-4" />
-                <span>{t('dashboard.tabs.history')}</span>
+                <span className="hidden md:inline">{t('dashboard.tabs.history')}</span>
               </Button>
               <Button
                 variant={activeTab === "albums" ? "default" : "ghost"}
                 onClick={() => setActiveTab("albums")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm touch-manipulation ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <Folder className="w-4 h-4" />
-                <span>{t('dashboard.tabs.albums')}</span>
+                <span className="hidden md:inline">{t('dashboard.tabs.albums')}</span>
               </Button>
               <Button
                 variant={activeTab === "profile" ? "default" : "ghost"}
                 onClick={() => setActiveTab("profile")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm touch-manipulation ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
               >
                 <UserCircle className="w-4 h-4" />
                 <span className="hidden lg:inline">
@@ -1354,48 +1363,62 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 <Button
                   variant="outline"
                   onClick={() => router.push('/admin')}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400 text-sm touch-manipulation"
                 >
                   <Shield className="w-4 h-4" />
-                  <span>{t('dashboard.tabs.admin')}</span>
+                  <span className="hidden md:inline">{t('dashboard.tabs.admin')}</span>
                 </Button>
               )}
               {/* Language Switcher */}
               <LanguageSwitcher variant="ghost" size="sm" />
             </nav>
-            {/* Mobile nav */}
+            
+            {/* Mobile Navigation Dropdown */}
             {userMenuOpen && (
-              <nav className="flex flex-col gap-2 w-full sm:hidden bg-white dark:bg-gray-900 rounded-lg shadow p-2 mt-2 z-50">
+              <div className="sm:hidden border-t border-gray-200/50 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
+                <nav className="container mx-auto px-3 py-3 space-y-2">
                 <Button
                   variant={activeTab === "generate" ? "default" : "ghost"}
-                  onClick={() => setActiveTab("generate")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                  onClick={() => {
+                    setActiveTab("generate")
+                    setUserMenuOpen(false)
+                  }}
+                  className={`w-full justify-start gap-3 h-12 text-base touch-manipulation ${activeTab === "generate" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5" />
                   <span>{t('dashboard.tabs.generate')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "history" ? "default" : "ghost"}
-                  onClick={() => setActiveTab("history")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                  onClick={() => {
+                    setActiveTab("history")
+                    setUserMenuOpen(false)
+                  }}
+                  className={`w-full justify-start gap-3 h-12 text-base touch-manipulation ${activeTab === "history" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
-                  <History className="w-4 h-4" />
+                  <History className="w-5 h-5" />
                   <span>{t('dashboard.tabs.history')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "albums" ? "default" : "ghost"}
-                  onClick={() => setActiveTab("albums")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                  onClick={() => {
+                    setActiveTab("albums")
+                    setUserMenuOpen(false)
+                  }}
+                  className={`w-full justify-start gap-3 h-12 text-base touch-manipulation ${activeTab === "albums" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
-                  <Folder className="w-4 h-4" />
+                  <Folder className="w-5 h-5" />
                   <span>{t('dashboard.tabs.albums')}</span>
                 </Button>
                 <Button
                   variant={activeTab === "profile" ? "default" : "ghost"}
-                  onClick={() => setActiveTab("profile")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+                  onClick={() => {
+                    setActiveTab("profile")
+                    setUserMenuOpen(false)
+                  }}
+                  className={`w-full justify-start gap-3 h-12 text-base touch-manipulation ${activeTab === "profile" ? "bg-purple-600 hover:bg-purple-700 text-white shadow-sm" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
                 >
-                  <UserCircle className="w-4 h-4" />
+                  <UserCircle className="w-5 h-5" />
                   <span>
                     {userName ? `Welcome, ${userName}` : t('dashboard.tabs.profile')}
                   </span>
@@ -1403,32 +1426,37 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                 {isAdmin && (
                   <Button
                     variant="outline"
-                    onClick={() => router.push('/admin')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400"
+                    onClick={() => {
+                      router.push('/admin')
+                      setUserMenuOpen(false)
+                    }}
+                    className="w-full justify-start gap-3 h-12 text-base border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-700 dark:text-red-400 touch-manipulation"
                   >
-                    <Shield className="w-4 h-4" />
+                    <Shield className="w-5 h-5" />
                     <span>{t('dashboard.tabs.admin')}</span>
                   </Button>
                 )}
-                {/* Language Switcher & Sign Out - Mobile */}
-                <div className="w-full flex items-center justify-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                
+                {/* Bottom Actions */}
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
                   <LanguageSwitcher variant="ghost" size="sm" />
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleSignOut}
-                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 h-10 px-3 touch-manipulation"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>{t('dashboard.actions.logOut')}</span>
                   </Button>
                 </div>
               </nav>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
         </header>
 
-        <div className="container mx-auto px-2 py-4">
+        <div className="container mx-auto px-3 sm:px-4 py-4 pb-20 sm:pb-4">
           <div className="flex gap-4">
             {/* Model Selection Side Panel - only show on Generate tab */}
             {activeTab === "generate" && (
@@ -1761,100 +1789,101 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                     </div>
                   )}
                   
-                  <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Mobile-optimized layout */}
+                  <div className="w-full max-w-none">
                     {selectedCategories.length === 0 ? (
                       images.length > 0 && (
-                        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
-                          <CardHeader>
-                            <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-4">
-                              <div className="relative aspect-square rounded-lg overflow-hidden">
-                                <Image
-                                  src={images[0].image_url || "/placeholder.svg"}
-                                  alt={images[0].prompt}
-                                  fill
-                                  className="object-cover"
-                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                  priority
-                                />
-                              </div>
-                              <div>
-                                <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
-                                  <span>{images[0].model}</span>
-                                  <span>{new Date(images[0].created_at).toLocaleDateString()}</span>
+                        <div className="mb-6">
+                          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl">
+                            <CardHeader>
+                              <CardTitle>{t('dashboard.generate.latestCreation')}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-4">
+                                <div className="relative aspect-square rounded-lg overflow-hidden">
+                                  <Image
+                                    src={images[0].image_url || "/placeholder.svg"}
+                                    alt={images[0].prompt}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    priority
+                                  />
                                 </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full mt-2"
-                                  type="button"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    setPromptDialogText(images[0].prompt);
-                                    setPromptDialogOpen(true);
-                                  }}
-                                >
-                                  {t('dashboard.generate.showPrompt')}
-                                </Button>
+                                <div>
+                                  <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
+                                    <span>{images[0].model}</span>
+                                    <span>{new Date(images[0].created_at).toLocaleDateString()}</span>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full mt-2"
+                                    type="button"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setPromptDialogText(images[0].prompt);
+                                      setPromptDialogOpen(true);
+                                    }}
+                                  >
+                                    {t('dashboard.generate.showPrompt')}
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </div>
                       )
                     ) : selectedCategories.includes("Text to Image") && (
                       <>
-                        {/* Generation Form */}
-                        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-                        <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-2xl rounded-2xl sm:rounded-3xl">
-                          <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
-                            <CardTitle className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-3 text-2xl sm:text-3xl font-bold">
-                              <span className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 animate-pulse">
+                        {/* Generation Form - Mobile Optimized */}
+                        <div className="w-full">
+                        <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-2xl rounded-xl sm:rounded-2xl lg:rounded-3xl">
+                          <CardHeader className="text-center pb-3 sm:pb-6 px-3 sm:px-6">
+                            <CardTitle className="flex flex-col items-center justify-center space-y-2 text-xl sm:text-2xl lg:text-3xl font-bold">
+                              <span className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-500 animate-pulse">
                                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                               </span>
-                              {t('dashboard.generate.title')}
+                              <span className="text-center leading-tight">{t('dashboard.generate.title')}</span>
                             </CardTitle>
-                            <CardDescription className="text-base sm:text-lg text-muted-foreground mt-2">
+                            <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground mt-2 px-2 sm:px-0">
                               {t('dashboard.generate.description')}
                             </CardDescription>
                           </CardHeader>
-                          <CardContent className="space-y-6 sm:space-y-8 px-4 sm:px-6">
-                            <form onSubmit={generateImage} className="space-y-6 sm:space-y-8">
+                          <CardContent className="space-y-4 sm:space-y-6 lg:space-y-8 px-3 sm:px-6">
+                            <form onSubmit={generateImage} className="space-y-4 sm:space-y-6 lg:space-y-8">
                               {/* Enhanced Prompt Input Area */}
                               <div className="space-y-4 sm:space-y-6">
-                                {/* Header with actions */}
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                                  <div className="flex items-center gap-2 sm:gap-3">
-                                    <Label htmlFor="prompt" className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+                                {/* Header with actions - Mobile Optimized */}
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <Label htmlFor="prompt" className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100">
                                       {t('dashboard.generate.prompt')}
                                     </Label>
                                     <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full">
                                       <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Required</span>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2 overflow-x-auto">
+                                  <div className="flex items-center gap-2 w-full">
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setShowExamplePrompts(!showExamplePrompts)}
-                                      className="flex items-center gap-1 sm:gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 whitespace-nowrap"
+                                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 h-10 touch-manipulation"
                                     >
                                       <Lightbulb className="w-4 h-4" />
-                                      <span className="hidden sm:inline">{t('dashboard.generate.examplePrompts')}</span>
-                                      <span className="sm:hidden">Examples</span>
+                                      <span className="text-sm">{t('dashboard.generate.examplePrompts')}</span>
                                     </Button>
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setShowSmartPromptBuilder(!showSmartPromptBuilder)}
-                                      className="flex items-center gap-1 sm:gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 whitespace-nowrap"
+                                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 h-10 touch-manipulation"
                                     >
                                       <Wand2 className="w-4 h-4" />
-                                      <span className="hidden sm:inline">{t('dashboard.generate.smartBuilder')}</span>
-                                      <span className="sm:hidden">Builder</span>
+                                      <span className="text-sm">{t('dashboard.generate.smartBuilder')}</span>
                                     </Button>
                                   </div>
                                 </div>
@@ -1894,30 +1923,29 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   </div>
                                 )}
 
-                                {/* Main prompt input */}
+                                {/* Main prompt input - Mobile Optimized */}
                                 <div className="relative">
-                                  <div className="flex flex-col sm:flex-row items-start gap-3">
-                                    <div className="w-full sm:flex-1 relative">
+                                  <div className="space-y-3">
+                                    <div className="w-full relative">
                                       <Textarea
                                         id="prompt"
                                         placeholder={t('dashboard.generate.promptPlaceholderInspiring')}
                                         value={prompt}
                                         onChange={e => setPrompt(e.target.value)}
                                         required
-                                        className="min-h-[120px] sm:min-h-[140px] text-base sm:text-lg resize-none focus:ring-2 focus:ring-purple-500 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                                        className="min-h-[140px] sm:min-h-[160px] text-base leading-relaxed resize-none focus:ring-2 focus:ring-purple-500 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 touch-manipulation"
                                       />
                                       {/* Character counter */}
-                                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-md shadow-sm">
+                                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
                                         {prompt.length} chars
                                       </div>
                                     </div>
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="sm"
                                       disabled={improvingPrompt || !prompt.trim()}
                                       title="Improve prompt with AI"
-                                      className="w-full sm:w-auto sm:shrink-0 sm:mt-2 h-10 sm:h-12 sm:w-12 p-2 sm:p-0 hover:bg-yellow-50 hover:border-yellow-200 border border-transparent"
+                                      className="w-full h-12 hover:bg-yellow-50 hover:border-yellow-200 border border-transparent touch-manipulation"
                                       onClick={async () => {
                                         setImprovingPrompt(true)
                                         try {
@@ -1942,16 +1970,17 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       }}
                                     >
                                       {improvingPrompt ? (
-                                        <div className="animate-spin">
-                                          <Sparkles className="w-5 h-5 text-yellow-500" />
+                                        <div className="flex items-center gap-2">
+                                          <div className="animate-spin">
+                                            <Sparkles className="w-5 h-5 text-yellow-500" />
+                                          </div>
+                                          <span className="text-sm font-medium">Enhancing...</span>
                                         </div>
                                       ) : (
-                                        <div className="flex sm:flex-col items-center gap-1 sm:gap-1">
-                                          <div className="flex items-center gap-1">
-                                            <Sparkles className="w-4 h-4 text-yellow-500" />
-                                            <span className="text-yellow-600 font-bold text-xs">AI</span>
-                                          </div>
-                                          <span className="text-xs text-gray-500 font-medium">{t('dashboard.generate.enhance')}</span>
+                                        <div className="flex items-center justify-center gap-2">
+                                          <Sparkles className="w-5 h-5 text-yellow-500" />
+                                          <span className="text-yellow-600 font-bold text-sm">AI</span>
+                                          <span className="text-sm text-gray-600 font-medium">{t('dashboard.generate.enhance')}</span>
                                         </div>
                                       )}
                                     </Button>
@@ -1965,32 +1994,32 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               </div>
 
                               {/* Essential Settings - Always Visible */}
-                              <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                                <div className="space-y-2">
-                                  <Label htmlFor="current-model" className="font-semibold">{t('dashboard.generate.currentModel')}</Label>
+                              <div className="space-y-4 sm:space-y-6">
+                                <div className="space-y-3">
+                                  <Label htmlFor="current-model" className="text-sm sm:text-base font-semibold">{t('dashboard.generate.currentModel')}</Label>
                                   {!profileLoading ? (
-                                    <div className="p-3 sm:p-4 border-2 rounded-xl bg-primary/5 border-primary/20">
-                                      <div className="flex items-center gap-3">
+                                    <div className="p-4 border-2 rounded-xl bg-primary/5 border-primary/20">
+                                      <div className="flex items-start gap-3">
                                         {(() => {
                                           const currentModel = availableModels.find(m => m.id === model);
                                           if (!currentModel) return null;
                                           return (
                                             <>
-                                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${currentModel.bgColor}`}>
-                                                <currentModel.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${currentModel.iconColor}`} />
+                                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${currentModel.bgColor} shrink-0`}>
+                                                <currentModel.icon className={`w-6 h-6 ${currentModel.iconColor}`} />
                                               </div>
                                               <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between">
-                                                  <h3 className="font-semibold text-sm sm:text-base truncate">{currentModel.name}</h3>
-                                                  <div className="px-2 sm:px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                  <h3 className="font-semibold text-base sm:text-lg leading-tight">{currentModel.name}</h3>
+                                                  <div className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 self-start">
                                                     {t('dashboard.generate.active')}
                                                   </div>
                                                 </div>
-                                                <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{currentModel.description}</p>
-                                                <div className="flex items-center justify-between mt-2">
-                                                  <span className="text-xs sm:text-sm font-medium text-primary">{currentModel.category}</span>
+                                                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{currentModel.description}</p>
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
+                                                  <span className="text-sm font-medium text-primary">{currentModel.category}</span>
                                                   {currentModel.price && (
-                                                    <span className="text-xs sm:text-sm font-medium text-green-600">{currentModel.price}</span>
+                                                    <span className="text-sm font-medium text-green-600">{currentModel.price}</span>
                                                   )}
                                                 </div>
                                               </div>
@@ -1998,34 +2027,33 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                           );
                                         })()}
                                       </div>
-                                      <div className="mt-3 sm:mt-4 pt-3 border-t border-primary/10">
+                                      <div className="mt-4 pt-4 border-t border-primary/10">
                                         <Button 
                                           type="button"
                                           variant="ghost" 
-                                          size="sm" 
-                                          className="w-full text-primary hover:bg-primary/10"
+                                          className="w-full text-primary hover:bg-primary/10 h-11 touch-manipulation"
                                           onClick={(e) => {
                                             e.preventDefault()
                                             e.stopPropagation()
                                             setModelPanelOpen(true)
                                           }}
                                         >
-                                          <Bot className="w-4 h-4 mr-2" />
-                                          {t('dashboard.generate.chooseModel')}
+                                          <Bot className="w-5 h-5 mr-2" />
+                                          <span className="text-base">{t('dashboard.generate.chooseModel')}</span>
                                         </Button>
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="h-20 sm:h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse flex items-center justify-center">
+                                    <div className="h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse flex items-center justify-center">
                                       <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModel')}</span>
                                     </div>
                                   )}
                                 </div>
 
-                                <div className="space-y-2">
-                                  <Label htmlFor="aspectRatio" className="font-semibold">{t('dashboard.generate.aspectRatio')}</Label>
+                                <div className="space-y-3">
+                                  <Label htmlFor="aspectRatio" className="text-sm sm:text-base font-semibold">{t('dashboard.generate.aspectRatio')}</Label>
                                   <Select value={aspectRatio} onValueChange={handleAspectRatioChange}>
-                                    <SelectTrigger className="h-10 sm:h-12">
+                                    <SelectTrigger className="h-11 touch-manipulation">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -2089,16 +2117,16 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                   type="button"
                                   variant="ghost"
                                   onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                  className="w-full flex items-center justify-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors h-12 touch-manipulation"
                                 >
-                                  <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                                  <span className="font-medium text-sm sm:text-base">
+                                  <Settings2 className="w-5 h-5" />
+                                  <span className="font-medium text-base">
                                     {showAdvancedSettings ? t('dashboard.generate.hideAdvanced') : t('dashboard.generate.showAdvanced')}
                                   </span>
                                   {showAdvancedSettings ? (
-                                    <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    <ChevronUp className="w-5 h-5" />
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    <ChevronDown className="w-5 h-5" />
                                   )}
                                 </Button>
                               </div>
@@ -2523,11 +2551,11 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 </div>
                               )}
 
-                              {/* Generate Button */}
-                              <div className="pt-4 sm:pt-6">
+                              {/* Generate Button - Mobile Optimized */}
+                              <div className="pt-6">
                                 <Button 
                                   type="submit" 
-                                  className="w-full h-12 sm:h-14 text-base sm:text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95" 
+                                  className="w-full h-14 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 touch-manipulation" 
                                   disabled={loading}
                                 >
                                   {loading 
@@ -2546,20 +2574,20 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                       </div>
 
 
-                      {/* Latest 3 Creations - Grid Preview */}
+                      {/* Latest 3 Creations - Mobile Optimized */}
                       {images.length > 0 && (
-                        <div className="w-full max-w-4xl mx-auto mt-8 mb-8 px-4 sm:px-6">
-                          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-                            <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
-                              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <div className="w-full mt-6 sm:mt-8">
+                          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-lg rounded-xl sm:rounded-2xl">
+                            <CardHeader className="pb-3 px-3 sm:px-6">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <ImageIcon className="w-5 h-5" />
                                 {t('dashboard.generate.latestCreations')}
                               </CardTitle>
                             </CardHeader>
-                            <CardContent className="px-4 sm:px-6">
-                              <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
+                            <CardContent className="px-3 sm:px-6">
+                              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 hide-scrollbar -mx-1 px-1">
                                 {images.slice(0, 3).map((image, index) => (
-                                  <div key={image.id} className="group cursor-pointer min-w-[220px] max-w-[240px] flex-shrink-0" onClick={() => { setExpandedImage(image); setShowFullPrompt(false); }}>
+                                  <div key={image.id} className="group cursor-pointer min-w-[200px] sm:min-w-[220px] max-w-[220px] sm:max-w-[240px] flex-shrink-0 touch-manipulation" onClick={() => { setExpandedImage(image); setShowFullPrompt(false); }}>
                                     <div className="relative aspect-square rounded-xl overflow-hidden shadow-md mb-3 group-hover:shadow-lg transition-shadow">
                                       <Image
                                         src={image.image_url || "/placeholder.svg"}
@@ -2572,18 +2600,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                                     </div>
                                     <div className="space-y-2">
-                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 leading-relaxed">
                                         {image.prompt}
                                       </p>
-                                      <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span className="truncate max-w-[100px]">{image.model}</span>
-                                        <span>{new Date(image.created_at).toLocaleDateString()}</span>
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-xs text-gray-500">
+                                        <span className="truncate">{image.model}</span>
+                                        <span className="text-xs">{new Date(image.created_at).toLocaleDateString()}</span>
                                       </div>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         type="button"
-                                        className="w-full"
+                                        className="w-full h-9 touch-manipulation"
                                         onClick={e => {
                                           e.stopPropagation();
                                           setPromptDialogText(image.prompt);
@@ -3727,6 +3755,71 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-t border-gray-200/50 dark:border-gray-700/50 pb-safe-bottom">
+          <div className="flex items-center justify-around px-2 py-2">
+            <button
+              onClick={() => {
+                setActiveTab("generate")
+                setUserMenuOpen(false)
+              }}
+              className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors touch-manipulation ${
+                activeTab === "generate" 
+                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" 
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-xs font-medium">Generate</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab("history")
+                setUserMenuOpen(false)
+              }}
+              className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors touch-manipulation ${
+                activeTab === "history" 
+                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400" 
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <History className="w-5 h-5" />
+              <span className="text-xs font-medium">History</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab("albums")
+                setUserMenuOpen(false)
+              }}
+              className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors touch-manipulation ${
+                activeTab === "albums" 
+                  ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" 
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <Folder className="w-5 h-5" />
+              <span className="text-xs font-medium">Albums</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab("profile")
+                setUserMenuOpen(false)
+              }}
+              className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-colors touch-manipulation ${
+                activeTab === "profile" 
+                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <UserCircle className="w-5 h-5" />
+              <span className="text-xs font-medium">Profile</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

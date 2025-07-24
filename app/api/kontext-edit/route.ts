@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     // Create/find album and add image to it
     try {
       // First, check if user already has the appropriate album
-      let { data: existingAlbum, error: albumFindError } = await supabase
+      const { data: existingAlbum, error: albumFindError } = await supabase
         .from('albums')
         .select('id, cover_image_url')
         .eq('user_id', user.id)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { fal } from "@fal-ai/client"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log("🧪 Testing fal.ai connectivity...")
     

@@ -54,14 +54,16 @@ interface User {
 interface Tier {
   id: string
   name: string
-  description?: string
+  display_name: string
+  description: string
+  is_active: boolean
 }
 
 interface Model {
   id: string
   model_id: string
   display_name: string
-  description?: string
+  description: string
   provider: string
   is_active: boolean
 }
@@ -396,7 +398,7 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
 
           {/* Access & Configuration Tab */}
           <TabsContent value="access">
-            <AccessControlPanel initialData={adminData} defaultTab="models" />
+            <AccessControlPanel initialData={{tiers: [], models: [], access: [], quotas: []}} defaultTab="models" />
           </TabsContent>
 
           {/* Other tabs will be implemented in the AccessControlPanel */}

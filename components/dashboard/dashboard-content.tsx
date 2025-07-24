@@ -11,17 +11,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ADMIN_EMAILS } from "@/lib/admin-config"
-import { Sparkles, Share2, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, ChevronLeft, ChevronRight, Wand2, Edit, Paintbrush, Eraser, RotateCcw, Undo2, ChevronDown, ChevronUp, Lightbulb, Copy } from "lucide-react"
+import { Sparkles, History, User, LogOut, Plus, Square, RectangleHorizontal, RectangleVertical, Settings2, Zap, Image as ImageIcon, Rocket, PenTool, Palette, Brain, Bot, Folder, Menu, UserCircle, Trash2, Lock, Shield, RefreshCw, Wand2, Edit, Paintbrush, RotateCcw, Undo2, ChevronDown, ChevronUp, Lightbulb, Copy } from "lucide-react"
 import { QuotaLimitDialog } from "@/components/ui/quota-limit-dialog"
 import { AuroraText } from "@/components/ui/aurora-text"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import type { Database } from "@/lib/supabase/types"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import PromptSuggestions from "./PromptSuggestions"
 import { SmartPromptBuilder } from "./smart-prompt-builder"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/components/providers/locale-provider"
 import { LanguageSwitcher } from "@/components/ui/language-switcher"
@@ -889,7 +887,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   }
 
   // Fetch albums for the user
-  const fetchAlbums = async () => {
+  const fetchAlbums = React.useCallback(async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -900,18 +898,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false })
     if (!error) setAlbums(data || [])
-  }
+  }, [supabase])
 
   // Fetch images for a selected album
-  const fetchAlbumImages = async (albumId: string) => {
+  const fetchAlbumImages = React.useCallback(async (albumId: string) => {
     const { data, error } = await supabase
       .from("album_images")
       .select("generated_images(*)")
       .eq("album_id", albumId)
     if (!error) {
-      setAlbumImages((data || []).map((row: any) => row.generated_images))
+      setAlbumImages((data || []).map((row: { generated_images: any }) => row.generated_images))
     }
-  }
+  }, [supabase])
 
   // When Albums tab is activated, fetch albums
   React.useEffect(() => {
@@ -920,14 +918,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setSelectedAlbum(null)
       setAlbumImages([])
     }
-  }, [activeTab])
+  }, [activeTab, fetchAlbums])
 
   // When an album is selected, fetch its images
   React.useEffect(() => {
     if (selectedAlbum) {
       fetchAlbumImages(selectedAlbum.id)
     }
-  }, [selectedAlbum])
+  }, [selectedAlbum, fetchAlbumImages])
 
   // Move image to another album and log correction
   const moveImageToAlbum = async (imageId: string, newAlbumId: string) => {
@@ -1312,7 +1310,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         clearTimeout(timeoutId);
       }
     };
-  }, []);
+  }, [fetchUserAccessibleModels, supabase]);
 
   // Helper function to check if a model is new (within a week)
   const isModelNew = (modelId: string) => {
@@ -1359,7 +1357,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         .order('display_name')
       if (error) return setAvailableModels([])
       setAvailableModels(
-        (data || []).map((m: any): AvailableModel => {
+        (data || []).map((m: { model_id: string; display_name: string; description: string }): AvailableModel => {
           const meta: Partial<AvailableModel> = modelMeta[m.model_id] || defaultMeta
           return {
             id: m.model_id,
@@ -1375,7 +1373,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       )
     }
     fetchModels()
-  }, [isFreeUser])
+  }, [isFreeUser, modelMeta, defaultMeta, supabase])
 
   // Update current model index when model changes
   useEffect(() => {
@@ -1390,7 +1388,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     } else {
       setGuidanceScale(7.5) // Default for other models (1-20 range)
     }
-  }, [model])
+  }, [model, availableModels])
 
 
 
@@ -1947,12 +1945,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                             <CardTitle className="flex flex-col items-center justify-center space-y-2 text-xl sm:text-2xl lg:text-3xl font-bold">
                               <span className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-500 animate-pulse">
                                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                              </span>
+                                  </span>
                               <span className="text-center leading-tight">{t('dashboard.generate.title')}</span>
-                            </CardTitle>
+                              </CardTitle>
                             <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground mt-2 px-2 sm:px-0">
-                              {t('dashboard.generate.description')}
-                            </CardDescription>
+                                  {t('dashboard.generate.description')}
+                              </CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-4 sm:space-y-6 lg:space-y-8 px-3 sm:px-6">
                             <form onSubmit={generateImage} className="space-y-4 sm:space-y-6 lg:space-y-8">
@@ -2031,49 +2029,49 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                 <div className="relative">
                                   <div className="space-y-3">
                                     <div className="w-full relative">
-                                      <Textarea
-                                        id="prompt"
+                                  <Textarea
+                                    id="prompt"
                                         placeholder={t('dashboard.generate.promptPlaceholderInspiring')}
-                                        value={prompt}
-                                        onChange={e => setPrompt(e.target.value)}
-                                        required
+                                    value={prompt}
+                                    onChange={e => setPrompt(e.target.value)}
+                                    required
                                         className="min-h-[140px] sm:min-h-[160px] text-base leading-relaxed resize-none focus:ring-2 focus:ring-purple-500 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 touch-manipulation"
-                                      />
+                                  />
                                       {/* Character counter */}
                                       <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
-                                        {prompt.length} chars
-                                      </div>
+                                      {prompt.length} chars
                                     </div>
-                                    <Button
-                                      type="button"
+                                </div>
+                                <Button
+                                  type="button"
                                       variant="ghost"
-                                      disabled={improvingPrompt || !prompt.trim()}
+                                  disabled={improvingPrompt || !prompt.trim()}
                                       title="Improve prompt with AI"
                                       className="w-full h-12 hover:bg-yellow-50 hover:border-yellow-200 border border-transparent touch-manipulation"
-                                      onClick={async () => {
-                                        setImprovingPrompt(true)
-                                        try {
-                                          const res = await fetch("/api/improve-prompt", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ prompt }),
-                                          })
-                                          const data = await res.json()
-                                          if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
-                                          setPrompt(data.improved)
-                                          toast({ 
-                                            title: "Prompt Enhanced!", 
-                                            description: "Your prompt has been improved with AI suggestions",
-                                            duration: 3000
-                                          })
-                                        } catch (err: any) {
-                                          toast({ title: "Error", description: err.message, variant: "destructive" })
-                                        } finally {
-                                          setImprovingPrompt(false)
-                                        }
-                                      }}
-                                    >
-                                      {improvingPrompt ? (
+                                  onClick={async () => {
+                                    setImprovingPrompt(true)
+                                    try {
+                                      const res = await fetch("/api/improve-prompt", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ prompt }),
+                                      })
+                                      const data = await res.json()
+                                      if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
+                                      setPrompt(data.improved)
+                                      toast({ 
+                                        title: "Prompt Enhanced!", 
+                                        description: "Your prompt has been improved with AI suggestions",
+                                        duration: 3000
+                                      })
+                                    } catch (err: any) {
+                                      toast({ title: "Error", description: err.message, variant: "destructive" })
+                                    } finally {
+                                      setImprovingPrompt(false)
+                                    }
+                                  }}
+                                >
+                                  {improvingPrompt ? (
                                         <div className="flex items-center gap-2">
                                           <div className="animate-spin">
                                             <Sparkles className="w-5 h-5 text-yellow-500" />
@@ -2086,8 +2084,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                           <span className="text-yellow-600 font-bold text-sm">AI</span>
                                           <span className="text-sm text-gray-600 font-medium">{t('dashboard.generate.enhance')}</span>
                                         </div>
-                                      )}
-                                    </Button>
+                                  )}
+                                </Button>
                                   </div>
                                   {/* Helper text */}
                                   <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-2">
@@ -2216,24 +2214,24 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               </div>
 
                               {/* Progressive Disclosure for Advanced Settings */}
-                              <div className="border-t pt-4 sm:pt-6">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                                  className="w-full flex items-center justify-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors h-12 touch-manipulation"
-                                >
-                                  <Settings2 className="w-5 h-5" />
-                                  <span className="font-medium text-base">
-                                    {showAdvancedSettings ? t('dashboard.generate.hideAdvanced') : t('dashboard.generate.showAdvanced')}
-                                  </span>
-                                  {showAdvancedSettings ? (
-                                    <ChevronUp className="w-5 h-5" />
-                                  ) : (
-                                    <ChevronDown className="w-5 h-5" />
-                                  )}
-                                </Button>
-                              </div>
+                                <div className="border-t pt-4 sm:pt-6">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                                    className="w-full flex items-center justify-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors h-12 touch-manipulation"
+                                  >
+                                    <Settings2 className="w-5 h-5" />
+                                    <span className="font-medium text-base">
+                                      {showAdvancedSettings ? t('dashboard.generate.hideAdvanced') : t('dashboard.generate.showAdvanced')}
+                                    </span>
+                                    {showAdvancedSettings ? (
+                                      <ChevronUp className="w-5 h-5" />
+                                    ) : (
+                                      <ChevronDown className="w-5 h-5" />
+                                    )}
+                                  </Button>
+                                </div>
 
                               {/* Advanced Settings - Collapsible */}
                               {showAdvancedSettings && (
@@ -2487,15 +2485,15 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                             }}
                                           >
                                             <input
-                                              id="image-upload"
-                                              type="file"
-                                              accept="image/*"
-                                              onChange={(e) => {
-                                                const file = e.target.files?.[0]
-                                                if (file) {
-                                                  handleFileUpload(file)
-                                                }
-                                              }}
+                                            id="image-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0]
+                                              if (file) {
+                                                handleFileUpload(file)
+                                              }
+                                            }}
                                               className="hidden"
                                             />
                                             <div className="space-y-3 pointer-events-none">
@@ -2657,18 +2655,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                             }}
                                           >
                                             <input
-                                              id="image-upload-kontext"
-                                              type="file"
-                                              accept="image/*"
-                                              onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                  handleFileUploadKontext(file);
-                                                }
-                                              }}
+                                            id="image-upload-kontext"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                handleFileUploadKontext(file);
+                                              }
+                                            }}
                                               className="hidden"
-                                              disabled={uploadingKontext}
-                                            />
+                                            disabled={uploadingKontext}
+                                          />
                                             <div className="space-y-3 pointer-events-none">
                                               <div className="flex justify-center">
                                                 {uploadingKontext ? (
@@ -2757,7 +2755,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                           >
                                             {t('dashboard.generate.uploadMethod')}
                                           </Button>
-                                        </div>
+                                </div>
                                       </div>
                                       {referenceMethodKontextMax === 'url' ? (
                                         <div>
@@ -2858,7 +2856,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                                   ✓ {t('dashboard.generate.readyForEditing')}
                                                 </p>
                                               </div>
-                                              <Button
+                                  <Button 
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
@@ -2898,7 +2896,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                             />
                                             <span className="text-sm font-medium w-12">{guidanceScale}</span>
                                           </div>
-                                        </div>
+                                          </div>
                                         
                                         <div>
                                           <Label htmlFor="num-images-kontext-max">{t('dashboard.generate.numImages')}</Label>
@@ -2911,7 +2909,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                             onChange={e => setNumImages(Number(e.target.value))}
                                             className="w-full border rounded px-3 py-2"
                                           />
-                                        </div>
+                                            </div>
 
                                         <div>
                                           <Label htmlFor="safety-tolerance">{t('dashboard.generate.safetyTolerance')}</Label>
@@ -2928,8 +2926,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                               <SelectItem value="6">6 - No Filtering</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                        </div>
-
+                                          </div>
+                                          
                                         <div>
                                           <Label htmlFor="output-format">{t('dashboard.generate.outputFormat')}</Label>
                                           <Select value={outputFormat} onValueChange={setOutputFormat}>
@@ -2941,7 +2939,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                               <SelectItem value="png">PNG</SelectItem>
                                             </SelectContent>
                                           </Select>
-                                        </div>
+                                            </div>
 
                                         <div className="col-span-full">
                                           <Label htmlFor="seed-kontext-max">{t('dashboard.generate.seed')}</Label>
@@ -2956,8 +2954,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         </div>
                                       </div>
                                     </div>
-                                  )}
-                                </div>
+                                      )}
+                                    </div>
                               )}
 
                               {/* Generate Button - Mobile Optimized */}
@@ -2975,7 +2973,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         ? t('dashboard.generate.editButton') 
                                         : t('dashboard.generate.generateButton'))
                                   }
-                                </Button>
+                                  </Button>
                               </div>
                             </form>
                           </CardContent>
@@ -3078,18 +3076,18 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                               }}
                             />
                             {/* Delete icon button in top right */}
-                            <button
-                              type="button"
-                              className="absolute top-2 right-2 z-10 p-1 rounded-full bg-white/80 dark:bg-gray-900/80 shadow hover:bg-red-100 dark:hover:bg-red-900 transition group-hover:opacity-100 opacity-0 group-focus-within:opacity-100 md:opacity-100"
-                              title="Delete image"
-                              onClick={e => {
-                                e.stopPropagation();
-                                setPendingDeleteImageId(image.id)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="w-5 h-5 text-red-600" />
-                            </button>
+                              <button
+                                type="button"
+                                className="absolute top-2 right-2 z-10 p-1 rounded-full bg-white/80 dark:bg-gray-900/80 shadow hover:bg-red-100 dark:hover:bg-red-900 transition group-hover:opacity-100 opacity-0 group-focus-within:opacity-100 md:opacity-100"
+                                title="Delete image"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setPendingDeleteImageId(image.id)
+                                  setDeleteDialogOpen(true)
+                                }}
+                              >
+                                <Trash2 className="w-5 h-5 text-red-600" />
+                              </button>
                           </div>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-center text-xs text-gray-500 mb-2">

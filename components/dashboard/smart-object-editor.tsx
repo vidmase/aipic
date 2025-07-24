@@ -655,7 +655,7 @@ export function SmartObjectEditor({ initialImage, onImageGenerated }: SmartObjec
             <p>2. Choose Point or Box selection mode</p>
             <p>3. Click on objects (Point) or draw boxes (Box) to select them</p>
             <p>4. Fine-tune selection with additional points</p>
-            <p>5. Enter replacement prompt and click "Replace/Edit Object"</p>
+            <p>5. Enter replacement prompt and click &quot;Replace/Edit Object&quot;</p>
           </CardContent>
         </Card>
       </div>

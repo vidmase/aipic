@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
-import { QuotaManager } from "@/lib/quota-manager"
 import { fal } from "@fal-ai/client"
-
-const quotaManager = new QuotaManager()
 
 export async function POST(request: NextRequest) {
   try {

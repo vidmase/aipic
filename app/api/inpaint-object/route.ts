@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     const generatedImage = result.images[0]
 
     // Save to database
-    const { data: savedImage, error: saveError } = await supabase
+    const { error: saveError } = await supabase
       .from('generated_images')
       .insert({
         user_id: user.id,

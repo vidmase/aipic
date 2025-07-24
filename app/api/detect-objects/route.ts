@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
-import { QuotaManager } from "@/lib/quota-manager"
 import { fal } from "@fal-ai/client"
-
-const quotaManager = new QuotaManager()
 
 export async function POST(request: NextRequest) {
   console.log('=== Florence-2 Object Detection API Called ===')
@@ -30,16 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user information
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('user_tier, is_premium')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError)
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
-    }
+    // User profile validation removed - using basic auth check only
 
     // Skip quota check for now (you can implement this later)
     console.log('Skipping quota check for Florence-2 object detection (temporary)')

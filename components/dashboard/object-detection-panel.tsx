@@ -386,7 +386,7 @@ export function ObjectDetectionPanel({
             <Search className="mx-auto h-12 w-12 text-gray-300 mb-4" />
             <p className="text-sm">No objects detected yet</p>
             <p className="text-xs text-gray-400">
-              Upload an image and click "Detect Objects" to get started
+              Upload an image and click &quot;Detect Objects&quot; to get started
             </p>
           </div>
         )}

@@ -337,7 +337,7 @@ export function SmartPromptBuilder({ initialPrompt = "", onPromptChange, onClose
     })
   }
 
-  const useVariation = (variation: string) => {
+  const applyVariation = (variation: string) => {
     // Extract the base prompt (everything before the first comma after the original prompt)
     const basePrompt = variation.split(", ").slice(0, -2).join(", ")
     setPrompt(basePrompt)
@@ -463,7 +463,7 @@ export function SmartPromptBuilder({ initialPrompt = "", onPromptChange, onClose
                 <div
                   key={index}
                   className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-cyan-300 dark:hover:border-cyan-600 transition-colors cursor-pointer group"
-                  onClick={() => useVariation(variation)}
+                  onClick={() => applyVariation(variation)}
                 >
                                       <div className="space-y-3">
                       <div className="flex items-center justify-between">

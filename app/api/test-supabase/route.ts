@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log("🧪 Testing Supabase connectivity...")
     
@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
     
     // Test basic auth (without requiring a user)
     try {
-      const { data, error } = await supabase.auth.getSession()
+      await supabase.auth.getSession()
       console.log("✅ Auth getSession succeeded")
       
       // Test database connection with a simple query
-      const { data: testData, error: dbError } = await supabase
+      const { error: dbError } = await supabase
         .from("generated_images")
         .select("count")
         .limit(1)

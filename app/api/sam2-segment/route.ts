@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
-import { QuotaManager } from "@/lib/quota-manager"
 import { fal } from "@fal-ai/client"
-
-const quotaManager = new QuotaManager()
 
 // Configure API route for larger request bodies
 export const config = {
@@ -37,17 +34,7 @@ export async function POST(request: NextRequest) {
     // This route now uses auto-segmentation, so point/box inputs are ignored.
     // The check for points/boxes has been removed.
 
-    // Get user information
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('user_tier, is_premium')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError)
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
-    }
+    // User profile validation removed - using basic auth check only
 
     // Skip quota check for SAM2 segmentation until model is properly configured
     console.log('Skipping quota check for SAM2 segmentation (temporary)')

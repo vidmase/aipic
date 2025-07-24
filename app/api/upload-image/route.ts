@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const filePath = `reference-images/${user.id}/${fileName}`
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('reference-images')
       .upload(filePath, file, {
         cacheControl: '3600',

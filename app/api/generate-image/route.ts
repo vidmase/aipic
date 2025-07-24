@@ -8,18 +8,7 @@ fal.config({
   credentials: process.env.FAL_KEY,
 })
 
-// Placeholder for image recognition/tagging
-async function analyzeImageContent(imageUrl: string, prompt: string): Promise<string[]> {
-  // TODO: Replace with real image recognition API (e.g., Google Vision, CLIP, etc.)
-  // For now, just use prompt keywords as tags
-  return prompt
-    .split(/\W+/)
-    .map((w) => w.trim().toLowerCase())
-    .filter((w) => w.length > 2);
-}
-
-// --- Image Generation Quota Config ---
-const IMAGE_GENERATION_QUOTA_PER_DAY = 3; // Change this value to adjust quota
+// Image generation quota removed for now
 
 export async function POST(request: NextRequest) {
   try {
@@ -130,7 +119,7 @@ export async function POST(request: NextRequest) {
       'fal-ai/bytedance/seededit/v3/edit-image': 'SeedEdit V3',
     }
     let albumId: string | null = null
-    let albumName = modelDisplayNames[model] || model.split('/').pop() || "Uncategorized"
+    const albumName = modelDisplayNames[model] || model.split('/').pop() || "Uncategorized"
 
     // Try to find an existing album for the user with a matching name
     const { data: existingAlbum } = await supabase

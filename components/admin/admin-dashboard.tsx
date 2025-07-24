@@ -18,8 +18,7 @@ import {
   TrendingUp,
   Clock,
   ArrowLeft,
-  Settings,
-  Zap
+  Settings
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -52,11 +51,40 @@ interface User {
   recentImages: number
 }
 
+interface Tier {
+  id: string
+  name: string
+  description?: string
+}
+
+interface Model {
+  id: string
+  model_id: string
+  display_name: string
+  description?: string
+  provider: string
+  is_active: boolean
+}
+
+interface AccessRecord {
+  id: string
+  tier_id: string
+  model_id: string
+  has_access: boolean
+}
+
+interface QuotaRecord {
+  id: string
+  tier_id: string
+  model_id: string
+  daily_limit: number
+}
+
 interface AdminData {
-  tiers: any[]
-  models: any[]
-  access: any[]
-  quotas: any[]
+  tiers: Tier[]
+  models: Model[]
+  access: AccessRecord[]
+  quotas: QuotaRecord[]
 }
 
 interface AdminDashboardProps {

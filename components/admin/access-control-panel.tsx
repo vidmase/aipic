@@ -26,10 +26,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { 
-  Settings, 
   Users, 
   Bot, 
   Shield, 
@@ -37,10 +35,7 @@ import {
   Edit, 
   Save,
   Loader2,
-  Eye,
   BarChart3,
-  Clock,
-  Calendar,
   Zap,
   RefreshCw
 } from "lucide-react"
@@ -95,10 +90,10 @@ interface UsageData {
 
 interface AccessControlPanelProps {
   initialData: {
-    tiers: any[]
-    models: any[]
-    access: any[]
-    quotas: any[]
+    tiers: UserTier[]
+    models: ImageModel[]
+    access: TierAccess[]
+    quotas: QuotaLimit[]
   }
   defaultTab?: string
 }

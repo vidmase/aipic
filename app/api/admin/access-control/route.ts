@@ -75,13 +75,13 @@ export async function GET(request: NextRequest) {
     
     // Type-safe error handling
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
-    const errorDetails: Record<string, any> = {}
+    const errorDetails: Record<string, unknown> = {}
     
     if (error && typeof error === 'object') {
-      if ('message' in error) errorDetails.message = (error as any).message
-      if ('code' in error) errorDetails.code = (error as any).code
-      if ('details' in error) errorDetails.details = (error as any).details
-      if ('hint' in error) errorDetails.hint = (error as any).hint
+      if ('message' in error) errorDetails.message = (error as {message: unknown}).message
+      if ('code' in error) errorDetails.code = (error as {code: unknown}).code
+      if ('details' in error) errorDetails.details = (error as {details: unknown}).details
+      if ('hint' in error) errorDetails.hint = (error as {hint: unknown}).hint
     }
     
     console.error("📍 Error details:", errorDetails)
@@ -344,9 +344,22 @@ export async function POST(request: NextRequest) {
           (quotasResult.data || []).map(record => `${record.tier_id}-${record.model_id}`)
         )
 
+        // Type definitions for missing records
+        interface MissingAccessRecord {
+          tier_id: string
+          model_id: string
+          is_enabled: boolean
+        }
+
+        interface MissingQuotaRecord {
+          tier_id: string
+          model_id: string
+          daily_limit: number
+        }
+
         // Find missing records
-        const missingAccess: any[] = []
-        const missingQuotas: any[] = []
+        const missingAccess: MissingAccessRecord[] = []
+        const missingQuotas: MissingQuotaRecord[] = []
 
         for (const model of models) {
           for (const tier of tiers) {
@@ -449,13 +462,13 @@ export async function POST(request: NextRequest) {
     
     // Type-safe error handling
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
-    const errorDetails: Record<string, any> = {}
+    const errorDetails: Record<string, unknown> = {}
     
     if (error && typeof error === 'object') {
-      if ('message' in error) errorDetails.message = (error as any).message
-      if ('code' in error) errorDetails.code = (error as any).code
-      if ('details' in error) errorDetails.details = (error as any).details
-      if ('hint' in error) errorDetails.hint = (error as any).hint
+      if ('message' in error) errorDetails.message = (error as {message: unknown}).message
+      if ('code' in error) errorDetails.code = (error as {code: unknown}).code
+      if ('details' in error) errorDetails.details = (error as {details: unknown}).details
+      if ('hint' in error) errorDetails.hint = (error as {hint: unknown}).hint
     }
     
     console.error("📍 Error details:", errorDetails)

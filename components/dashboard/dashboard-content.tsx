@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import NextImage from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -108,7 +109,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   
   // SeedEdit model state
   const [imageUrl, setImageUrl] = useState('')
-  const [referenceMethod, setReferenceMethod] = useState<'url' | 'upload'>('url')
+  const [referenceMethod, setReferenceMethod] = useState<'url' | 'upload'>('upload')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null)
   
@@ -178,6 +179,15 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [imageUrlKontext, setImageUrlKontext] = useState<string>('');
   const [uploadingKontext, setUploadingKontext] = useState<boolean>(false);
 
+  // Add state for FLUX Kontext Max model
+  const [referenceMethodKontextMax, setReferenceMethodKontextMax] = useState<'url' | 'upload'>('upload');
+  const [uploadedFileKontextMax, setUploadedFileKontextMax] = useState<File | null>(null);
+  const [uploadedFilePreviewKontextMax, setUploadedFilePreviewKontextMax] = useState<string | null>(null);
+  const [imageUrlKontextMax, setImageUrlKontextMax] = useState<string>('');
+  const [uploadingKontextMax, setUploadingKontextMax] = useState<boolean>(false);
+  const [safetyTolerance, setSafetyTolerance] = useState('2');
+  const [outputFormat, setOutputFormat] = useState('jpeg');
+
   // Handler for FLUX Kontext Edit file upload
   const handleFileUploadKontext = async (file: File) => {
     setUploadingKontext(true);
@@ -203,6 +213,35 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       setImageUrlKontext('');
     } finally {
       setUploadingKontext(false);
+    }
+  };
+
+  // Handler for FLUX Kontext Max file upload
+  const handleFileUploadKontextMax = async (file: File) => {
+    setUploadingKontextMax(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setUploadedFileKontextMax(file);
+        setUploadedFilePreviewKontextMax(URL.createObjectURL(file));
+        setImageUrlKontextMax(data.url);
+        toast({ title: 'Upload successful', description: 'Image uploaded and ready for editing' });
+      } else {
+        toast({ title: 'Upload failed', description: data.error || 'Unknown error', variant: 'destructive' });
+        setUploadedFileKontextMax(null);
+        setUploadedFilePreviewKontextMax(null);
+        setImageUrlKontextMax('');
+      }
+    } catch (err) {
+      toast({ title: 'Upload failed', description: String(err), variant: 'destructive' });
+      setUploadedFileKontextMax(null);
+      setUploadedFilePreviewKontextMax(null);
+      setImageUrlKontextMax('');
+    } finally {
+      setUploadingKontextMax(false);
     }
   };
 
@@ -234,6 +273,26 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         })
         return
       }
+    }
+
+    // Validation for FLUX Kontext models
+    if (model === 'fal-ai/flux-pro/kontext' && !imageUrlKontext.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reference image for FLUX Kontext",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validation for FLUX Kontext Max model
+    if (model === 'fal-ai/flux-pro/kontext/max' && !imageUrlKontextMax.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reference image for FLUX Kontext Max",
+        variant: "destructive",
+      })
+      return
     }
 
     // Refresh accessible models before generating to ensure latest permissions
@@ -284,6 +343,42 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         finalImageUrl = uploadData.url
       }
 
+      // Handle file upload for FLUX Kontext models
+      if (model === 'fal-ai/flux-pro/kontext' && referenceMethodKontext === 'upload' && uploadedFileKontext) {
+        const formData = new FormData()
+        formData.append('file', uploadedFileKontext)
+        
+        const uploadResponse = await fetch('/api/upload-image', {
+          method: 'POST', 
+          body: formData
+        })
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image')
+        }
+        
+        const uploadData = await uploadResponse.json()
+        setImageUrlKontext(uploadData.url)
+      }
+
+      // Handle file upload for FLUX Kontext Max model
+      if (model === 'fal-ai/flux-pro/kontext/max' && referenceMethodKontextMax === 'upload' && uploadedFileKontextMax) {
+        const formData = new FormData()
+        formData.append('file', uploadedFileKontextMax)
+        
+        const uploadResponse = await fetch('/api/upload-image', {
+          method: 'POST', 
+          body: formData
+        })
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image')
+        }
+        
+        const uploadData = await uploadResponse.json()
+        setImageUrlKontextMax(uploadData.url)
+      }
+
       // Use different endpoint for SeedEdit model
       const endpoint = model === 'fal-ai/bytedance/seededit/v3/edit-image' 
         ? "/api/edit-image" 
@@ -321,6 +416,14 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           }),
           ...(model === 'fal-ai/flux-pro/kontext' && {
             image_url: imageUrlKontext,
+          }),
+          ...(model === 'fal-ai/flux-pro/kontext/max' && {
+            image_url: imageUrlKontextMax,
+            guidance_scale: guidanceScale,
+            num_images: numImages,
+            output_format: outputFormat,
+            safety_tolerance: safetyTolerance,
+            seed: seed ? Number(seed) : undefined,
           }),
         }),
       })
@@ -1233,6 +1336,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     "fal-ai/flux-pro/v1.1-ultra": { icon: Rocket, iconColor: "text-pink-600", bgColor: "bg-pink-100", category: "Premium", price: "$0.04-0.06" },
     "fal-ai/flux-pro/kontext":    { icon: Brain, iconColor: "text-orange-600", bgColor: "bg-orange-100", category: "Premium", price: "$0.04" },
     "fal-ai/flux-pro/kontext/text-to-image": { icon: Brain, iconColor: "text-orange-600", bgColor: "bg-orange-100", category: "Premium", price: "$0.04" },
+    "fal-ai/flux-pro/kontext/max": { icon: Brain, iconColor: "text-red-600", bgColor: "bg-red-100", category: "Premium Max", price: "$0.04" },
     "fal-ai/ideogram/v2":    { icon: PenTool,  iconColor: "text-blue-600", bgColor: "bg-blue-100",  category: "Text & Logos", price: "$0.08" },
     "fal-ai/ideogram/v3":    { icon: PenTool,  iconColor: "text-blue-700", bgColor: "bg-blue-100",  category: "Text & Logos" },
     "fal-ai/recraft-v3":     { icon: Palette,  iconColor: "text-purple-600",bgColor: "bg-purple-100",category: "Text & Logos", price: "$0.04-0.08" },
@@ -2327,7 +2431,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     <div className="space-y-4">
                                       <div>
                                         <Label htmlFor="reference-method">{t('dashboard.generate.referenceImage')}</Label>
-                                        <div className="flex gap-2 mt-2">
+                                        <div className="flex gap-2 mt-2 hidden">
                                           <Button
                                             type="button"
                                             variant={referenceMethod === 'url' ? 'default' : 'outline'}
@@ -2361,20 +2465,56 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         </div>
                                       ) : (
                                         <div>
-                                          <Label htmlFor="image-upload">{t('dashboard.generate.uploadImage')}</Label>
-                                          <Input
-                                            id="image-upload"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => {
-                                              const file = e.target.files?.[0]
-                                              if (file) {
+                                          <Label>{t('dashboard.generate.uploadImage')}</Label>
+                                          <label 
+                                            htmlFor="image-upload"
+                                            className="mt-1 border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200 relative block cursor-pointer border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                            onDragOver={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                            }}
+                                            onDragLeave={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                            }}
+                                            onDrop={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                              const file = e.dataTransfer.files[0]
+                                              if (file && file.type.startsWith('image/')) {
                                                 handleFileUpload(file)
                                               }
                                             }}
-                                            className="mt-1"
-                                            key={uploadedFile ? 'with-file' : 'no-file'}
-                                          />
+                                          >
+                                            <input
+                                              id="image-upload"
+                                              type="file"
+                                              accept="image/*"
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0]
+                                                if (file) {
+                                                  handleFileUpload(file)
+                                                }
+                                              }}
+                                              className="hidden"
+                                            />
+                                            <div className="space-y-3 pointer-events-none">
+                                              <div className="flex justify-center">
+                                                <ImageIcon className="w-12 h-12 text-gray-400" />
+                                              </div>
+                                              <div>
+                                                <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
+                                                  Drop image here
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                  or click to browse files
+                                                </p>
+                                              </div>
+                                              <p className="text-xs text-gray-400">
+                                                Supports: JPG, PNG, WebP, GIF (up to 20MB)
+                                              </p>
+                                            </div>
+                                          </label>
                                           {uploadedFile && uploadedFilePreview && (
                                             <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 h-20 max-h-24 overflow-hidden flex items-center">
                                               <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -2454,7 +2594,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                     <div className="space-y-4">
                                       <div>
                                         <Label htmlFor="reference-method-kontext">{t('dashboard.generate.referenceImage')}</Label>
-                                        <div className="flex gap-2 mt-2">
+                                        <div className="flex gap-2 mt-2 hidden">
                                           <Button
                                             type="button"
                                             variant={referenceMethodKontext === 'url' ? 'default' : 'outline'}
@@ -2487,21 +2627,69 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         </div>
                                       ) : (
                                         <div>
-                                          <Label htmlFor="image-upload-kontext">{t('dashboard.generate.uploadImage')}</Label>
-                                          <Input
-                                            id="image-upload-kontext"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => {
-                                              const file = e.target.files?.[0];
-                                              if (file) {
-                                                handleFileUploadKontext(file);
+                                          <Label>{t('dashboard.generate.uploadImage')}</Label>
+                                          <label 
+                                            htmlFor="image-upload-kontext"
+                                            className={`mt-1 border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200 relative block ${
+                                              uploadingKontext 
+                                                ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed opacity-50' 
+                                                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer'
+                                            }`}
+                                            onDragOver={(e) => {
+                                              e.preventDefault()
+                                              if (!uploadingKontext) {
+                                                e.currentTarget.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
                                               }
                                             }}
-                                            className="mt-1"
-                                            key={uploadedFileKontext ? 'with-file' : 'no-file'}
-                                            disabled={uploadingKontext}
-                                          />
+                                            onDragLeave={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                            }}
+                                            onDrop={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                              if (!uploadingKontext) {
+                                                const file = e.dataTransfer.files[0]
+                                                if (file && file.type.startsWith('image/')) {
+                                                  handleFileUploadKontext(file)
+                                                }
+                                              }
+                                            }}
+                                          >
+                                            <input
+                                              id="image-upload-kontext"
+                                              type="file"
+                                              accept="image/*"
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  handleFileUploadKontext(file);
+                                                }
+                                              }}
+                                              className="hidden"
+                                              disabled={uploadingKontext}
+                                            />
+                                            <div className="space-y-3 pointer-events-none">
+                                              <div className="flex justify-center">
+                                                {uploadingKontext ? (
+                                                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                  <ImageIcon className="w-12 h-12 text-gray-400" />
+                                                )}
+                                              </div>
+                                              <div>
+                                                <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
+                                                  {uploadingKontext ? 'Uploading...' : 'Drop image here'}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                  {uploadingKontext ? 'Please wait' : 'or click to browse files'}
+                                                </p>
+                                              </div>
+                                              <p className="text-xs text-gray-400">
+                                                Supports: JPG, PNG, WebP, GIF (up to 20MB)
+                                              </p>
+                                            </div>
+                                          </label>
                                           {uploadedFileKontext && uploadedFilePreviewKontext && (
                                             <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 h-20 max-h-24 overflow-hidden flex items-center">
                                               <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -2546,6 +2734,227 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                           )}
                                         </div>
                                       )}
+                                    </div>
+                                  )}
+                                  {model === 'fal-ai/flux-pro/kontext/max' && (
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="reference-method-kontext-max">{t('dashboard.generate.referenceImage')}</Label>
+                                        <div className="flex gap-2 mt-2 hidden">
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethodKontextMax === 'url' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethodKontextMax('url')}
+                                          >
+                                            {t('dashboard.generate.urlMethod')}
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant={referenceMethodKontextMax === 'upload' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setReferenceMethodKontextMax('upload')}
+                                          >
+                                            {t('dashboard.generate.uploadMethod')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      {referenceMethodKontextMax === 'url' ? (
+                                        <div>
+                                          <Label htmlFor="image-url-kontext-max">{t('dashboard.generate.imageUrl')}</Label>
+                                          <Input
+                                            id="image-url-kontext-max"
+                                            type="url"
+                                            value={imageUrlKontextMax}
+                                            onChange={(e) => setImageUrlKontextMax(e.target.value)}
+                                            placeholder={t('dashboard.generate.imageUrlPlaceholder')}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <Label>{t('dashboard.generate.uploadImage')}</Label>
+                                          <label 
+                                            htmlFor="image-upload-kontext-max"
+                                            className={`mt-1 border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200 relative block ${
+                                              uploadingKontextMax 
+                                                ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed opacity-50' 
+                                                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer'
+                                            }`}
+                                            onDragOver={(e) => {
+                                              e.preventDefault()
+                                              if (!uploadingKontextMax) {
+                                                e.currentTarget.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                              }
+                                            }}
+                                            onDragLeave={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                            }}
+                                            onDrop={(e) => {
+                                              e.preventDefault()
+                                              e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30')
+                                              if (!uploadingKontextMax) {
+                                                const file = e.dataTransfer.files[0]
+                                                if (file && file.type.startsWith('image/')) {
+                                                  handleFileUploadKontextMax(file)
+                                                }
+                                              }
+                                            }}
+                                          >
+                                            <input
+                                              id="image-upload-kontext-max"
+                                              type="file"
+                                              accept="image/*"
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  handleFileUploadKontextMax(file);
+                                                }
+                                              }}
+                                              className="hidden"
+                                              disabled={uploadingKontextMax}
+                                            />
+                                            <div className="space-y-3 pointer-events-none">
+                                              <div className="flex justify-center">
+                                                {uploadingKontextMax ? (
+                                                  <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                  <ImageIcon className="w-12 h-12 text-gray-400" />
+                                                )}
+                                              </div>
+                                              <div>
+                                                <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
+                                                  {uploadingKontextMax ? 'Uploading...' : 'Drop image here'}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                  {uploadingKontextMax ? 'Please wait' : 'or click to browse files'}
+                                                </p>
+                                              </div>
+                                              <p className="text-xs text-gray-400">
+                                                Supports: JPG, PNG, WebP, GIF (up to 20MB)
+                                              </p>
+                                            </div>
+                                          </label>
+                                          {uploadedFileKontextMax && uploadedFilePreviewKontextMax && (
+                                            <div className="mt-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 h-20 max-h-24 overflow-hidden flex items-center">
+                                              <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                                <NextImage
+                                                  src={uploadedFilePreviewKontextMax}
+                                                  alt="Uploaded reference image"
+                                                  fill
+                                                  className="object-cover"
+                                                  sizes="64px"
+                                                />
+                                              </div>
+                                              <div className="flex-1 min-w-0 ml-3">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[120px] block whitespace-nowrap overflow-hidden">
+                                                  {uploadedFileKontextMax.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                  {(uploadedFileKontextMax.size / 1024 / 1024).toFixed(2)} MB
+                                                </p>
+                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                                  ✓ {t('dashboard.generate.readyForEditing')}
+                                                </p>
+                                              </div>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setUploadedFileKontextMax(null);
+                                                  if (uploadedFilePreviewKontextMax) {
+                                                    URL.revokeObjectURL(uploadedFilePreviewKontextMax);
+                                                  }
+                                                  setUploadedFilePreviewKontextMax(null);
+                                                  setImageUrlKontextMax('');
+                                                  const fileInput = document.getElementById('image-upload-kontext-max') as HTMLInputElement;
+                                                  if (fileInput) fileInput.value = '';
+                                                }}
+                                                className="text-gray-400 hover:text-gray-600 ml-2"
+                                              >
+                                                ×
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* FLUX Kontext Max specific settings */}
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                          <Label htmlFor="guidance-scale-kontext-max">{t('dashboard.generate.guidanceScale')}</Label>
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              id="guidance-scale-kontext-max"
+                                              type="range"
+                                              min={1}
+                                              max={20}
+                                              step={0.1}
+                                              value={guidanceScale}
+                                              onChange={e => setGuidanceScale(Number(e.target.value))}
+                                              className="flex-1"
+                                            />
+                                            <span className="text-sm font-medium w-12">{guidanceScale}</span>
+                                          </div>
+                                        </div>
+                                        
+                                        <div>
+                                          <Label htmlFor="num-images-kontext-max">{t('dashboard.generate.numImages')}</Label>
+                                          <input
+                                            id="num-images-kontext-max"
+                                            type="number"
+                                            min={1}
+                                            max={4}
+                                            value={numImages}
+                                            onChange={e => setNumImages(Number(e.target.value))}
+                                            className="w-full border rounded px-3 py-2"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <Label htmlFor="safety-tolerance">{t('dashboard.generate.safetyTolerance')}</Label>
+                                          <Select value={safetyTolerance} onValueChange={setSafetyTolerance}>
+                                            <SelectTrigger id="safety-tolerance">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="1">1 - Most Strict</SelectItem>
+                                              <SelectItem value="2">2 - Default</SelectItem>
+                                              <SelectItem value="3">3 - Moderate</SelectItem>
+                                              <SelectItem value="4">4 - Permissive</SelectItem>
+                                              <SelectItem value="5">5 - Most Permissive</SelectItem>
+                                              <SelectItem value="6">6 - No Filtering</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        <div>
+                                          <Label htmlFor="output-format">{t('dashboard.generate.outputFormat')}</Label>
+                                          <Select value={outputFormat} onValueChange={setOutputFormat}>
+                                            <SelectTrigger id="output-format">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="jpeg">JPEG</SelectItem>
+                                              <SelectItem value="png">PNG</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        <div className="col-span-full">
+                                          <Label htmlFor="seed-kontext-max">{t('dashboard.generate.seed')}</Label>
+                                          <input
+                                            id="seed-kontext-max"
+                                            type="number"
+                                            value={seed}
+                                            onChange={e => setSeed(e.target.value)}
+                                            placeholder={t('dashboard.generate.seedPlaceholder')}
+                                            className="w-full border rounded px-3 py-2"
+                                          />
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
                                 </div>

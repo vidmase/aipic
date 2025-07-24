@@ -200,6 +200,8 @@ export const lt: EnglishMessages = {
       readyForEditing: "Paruoštas redagavimui",
       removeFile: "Pašalinti failą",
       guidanceScaleHelper: "Kontroliuoja, kaip tiksliai redagavimas seka aprašymą (0.0 = laisvas, 1.0 = griežtas)",
+      safetyTolerance: "Saugumo Tolerancija",
+      outputFormat: "Išvesties Formatas",
       // Inpainting
       paintMode: "Piešimo Režimas",
       exitPaintMode: "Išeiti iš Piešimo",

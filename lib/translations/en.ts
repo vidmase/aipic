@@ -198,6 +198,8 @@ export const en = {
       readyForEditing: "Ready for editing",
       removeFile: "Remove file",
       guidanceScaleHelper: "Controls how closely the edit follows the prompt (0.0 = loose, 1.0 = strict)",
+      safetyTolerance: "Safety Tolerance",
+      outputFormat: "Output Format",
       // Inpainting
       paintMode: "Paint Mode",
       exitPaintMode: "Exit Paint",

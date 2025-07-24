@@ -187,6 +187,7 @@ export async function POST(request: NextRequest) {
 
       case 'create_model': {
         const { model_id, display_name: model_display_name, description: model_description, provider } = data
+        
         // Insert the new model
         const { data: insertedModels, error: modelError } = await adminSupabase
           .from('image_models')
@@ -210,22 +211,211 @@ export async function POST(request: NextRequest) {
         if (tiersError) throw tiersError
         if (!tiers) throw new Error('No user tiers found')
 
+        // Helper function to determine default access based on tier and model
+        const getDefaultAccess = (tierName: string, modelId: string) => {
+          if (tierName === 'admin') return true
+          if (tierName === 'premium') return true
+          if (tierName === 'free') {
+            // Free tier gets access to basic models only
+            return modelId.includes('fast-sdxl') || 
+                   modelId.includes('flux/schnell') || 
+                   modelId.includes('ideogram/v2')
+          }
+          return false
+        }
+
+        // Helper function to determine default quota limits based on tier and model
+        const getDefaultQuotas = (tierName: string, modelId: string) => {
+          const isPremiumModel = modelId.includes('pro') || modelId.includes('ultra') || modelId.includes('edit')
+          
+          switch (tierName) {
+            case 'free':
+              return isPremiumModel 
+                ? { daily_limit: 0, monthly_limit: 0, hourly_limit: 0 }
+                : { daily_limit: 3, monthly_limit: 90, hourly_limit: 1 }
+            case 'premium':
+              return isPremiumModel
+                ? { daily_limit: 50, monthly_limit: 1500, hourly_limit: 5 }
+                : { daily_limit: 100, monthly_limit: 3000, hourly_limit: 10 }
+            case 'admin':
+              return { daily_limit: 1000, monthly_limit: 30000, hourly_limit: 100 }
+            default:
+              return { daily_limit: 3, monthly_limit: 90, hourly_limit: 1 }
+          }
+        }
+
         // Prepare access rows
         const accessRows = tiers.map(tier => ({
           tier_id: tier.id,
           model_id: newModel.id,
-          is_enabled:
-            tier.name === 'admin' || tier.name === 'premium'
-              ? true
-              : (model_id.includes('fast-sdxl') || model_id.includes('flux/schnell') || model_id.includes('ideogram'))
+          is_enabled: getDefaultAccess(tier.name, model_id)
         }))
+
+        // Prepare quota rows
+        const quotaRows = tiers.map(tier => ({
+          tier_id: tier.id,
+          model_id: newModel.id,
+          ...getDefaultQuotas(tier.name, model_id)
+        }))
+
         // Insert access rows
         const { error: accessError } = await adminSupabase
           .from('tier_model_access')
           .insert(accessRows)
         if (accessError) throw accessError
 
-        return NextResponse.json({ success: true, message: "Model created and tier access set up successfully" })
+        // Insert quota rows
+        const { error: quotaError } = await adminSupabase
+          .from('quota_limits')
+          .insert(quotaRows)
+        if (quotaError) throw quotaError
+
+        return NextResponse.json({ 
+          success: true, 
+          message: "Model created successfully with tier access and quota limits",
+          model: newModel
+        })
+      }
+
+      case 'sync_missing_quotas': {
+        console.log('🔧 Syncing missing quota and access records...')
+
+        // Helper functions (same as in create_model)
+        const getDefaultAccess = (tierName: string, modelId: string) => {
+          if (tierName === 'admin') return true
+          if (tierName === 'premium') return true
+          if (tierName === 'free') {
+            return modelId.includes('fast-sdxl') || 
+                   modelId.includes('flux/schnell') || 
+                   modelId.includes('ideogram/v2')
+          }
+          return false
+        }
+
+        const getDefaultQuotas = (tierName: string, modelId: string) => {
+          const isPremiumModel = modelId.includes('pro') || 
+                                modelId.includes('ultra') || 
+                                modelId.includes('edit') ||
+                                modelId.includes('kontext') ||
+                                modelId.includes('seededit')
+          
+          switch (tierName) {
+            case 'free':
+              return isPremiumModel 
+                ? { daily_limit: 0, monthly_limit: 0, hourly_limit: 0 }
+                : { daily_limit: 3, monthly_limit: 90, hourly_limit: 1 }
+            case 'premium':
+              return isPremiumModel
+                ? { daily_limit: 50, monthly_limit: 1500, hourly_limit: 5 }
+                : { daily_limit: 100, monthly_limit: 3000, hourly_limit: 10 }
+            case 'admin':
+              return { daily_limit: 1000, monthly_limit: 30000, hourly_limit: 100 }
+            default:
+              return { daily_limit: 3, monthly_limit: 90, hourly_limit: 1 }
+          }
+        }
+
+        // Get all models and tiers
+        const [modelsResult, tiersResult] = await Promise.all([
+          adminSupabase.from('image_models').select('id, model_id, display_name').eq('is_active', true),
+          adminSupabase.from('user_tiers').select('id, name, display_name')
+        ])
+
+        if (modelsResult.error) throw modelsResult.error
+        if (tiersResult.error) throw tiersResult.error
+
+        const models = modelsResult.data || []
+        const tiers = tiersResult.data || []
+
+        // Get existing access and quota records
+        const [accessResult, quotasResult] = await Promise.all([
+          adminSupabase.from('tier_model_access').select('tier_id, model_id'),
+          adminSupabase.from('quota_limits').select('tier_id, model_id')
+        ])
+
+        if (accessResult.error) throw accessResult.error
+        if (quotasResult.error) throw quotasResult.error
+
+        // Create sets for quick lookup
+        const existingAccessSet = new Set(
+          (accessResult.data || []).map(record => `${record.tier_id}-${record.model_id}`)
+        )
+        const existingQuotasSet = new Set(
+          (quotasResult.data || []).map(record => `${record.tier_id}-${record.model_id}`)
+        )
+
+        // Find missing records
+        const missingAccess: any[] = []
+        const missingQuotas: any[] = []
+
+        for (const model of models) {
+          for (const tier of tiers) {
+            const key = `${tier.id}-${model.id}`
+
+            if (!existingAccessSet.has(key)) {
+              missingAccess.push({
+                tier_id: tier.id,
+                model_id: model.id,
+                is_enabled: getDefaultAccess(tier.name, model.model_id)
+              })
+            }
+
+            if (!existingQuotasSet.has(key)) {
+              const quotas = getDefaultQuotas(tier.name, model.model_id)
+              missingQuotas.push({
+                tier_id: tier.id,
+                model_id: model.id,
+                ...quotas
+              })
+            }
+          }
+        }
+
+        console.log(`🔍 Found ${missingAccess.length} missing access records`)
+        console.log(`🔍 Found ${missingQuotas.length} missing quota records`)
+
+        // Insert missing records
+        const results = {
+          accessCreated: 0,
+          quotasCreated: 0,
+          affectedModels: [] as string[]
+        }
+
+        if (missingAccess.length > 0) {
+          const { error: accessError } = await adminSupabase
+            .from('tier_model_access')
+            .insert(missingAccess)
+          
+          if (accessError) throw accessError
+          results.accessCreated = missingAccess.length
+        }
+
+        if (missingQuotas.length > 0) {
+          const { error: quotaError } = await adminSupabase
+            .from('quota_limits')
+            .insert(missingQuotas)
+          
+          if (quotaError) throw quotaError
+          results.quotasCreated = missingQuotas.length
+        }
+
+        // Get affected models
+        const affectedModelIds = new Set()
+        const allMissingRecords = [...missingAccess, ...missingQuotas]
+        allMissingRecords.forEach(record => {
+          affectedModelIds.add(record.model_id)
+        })
+
+        results.affectedModels = models.filter(model => 
+          affectedModelIds.has(model.id)
+        ).map(model => model.display_name)
+
+        console.log('✅ Sync completed successfully')
+        return NextResponse.json({ 
+          success: true, 
+          message: "Missing quota and access records synced successfully",
+          results
+        })
       }
 
       case 'update_user_tier': {

@@ -397,7 +397,7 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
         setNewModel({ model_id: '', display_name: '', description: '', provider: 'fal-ai' })
         toast({
           title: "Success",
-          description: "Image model created",
+          description: "Image model created with access and quota settings",
         })
       } else {
         throw new Error('Failed to create model')
@@ -406,6 +406,49 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
       toast({
         title: "Error",
         description: "Failed to create image model",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSyncMissingQuotas = async () => {
+    setSaving(true)
+    try {
+      const response = await fetch('/api/admin/access-control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync_missing_quotas'
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        await loadData()
+        
+        const { results } = data
+        const totalFixed = results.accessCreated + results.quotasCreated
+        
+        if (totalFixed > 0) {
+          toast({
+            title: "Success",
+            description: `Fixed ${totalFixed} missing records for ${results.affectedModels.length} models`,
+          })
+        } else {
+          toast({
+            title: "Info",
+            description: "All models already have complete access and quota settings",
+          })
+        }
+      } else {
+        throw new Error('Failed to sync quota records')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sync missing quota records",
         variant: "destructive",
       })
     } finally {
@@ -907,6 +950,44 @@ export function AccessControlPanel({ initialData, defaultTab = "access" }: Acces
               </CardContent>
             </Card>
           </div>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Model Sync Utility
+              </CardTitle>
+              <CardDescription>
+                Automatically create missing access permissions and quota limits for existing models
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row items-start gap-4">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    If you notice that some models are missing from the Quota Management section, 
+                    use this button to automatically create the missing access controls and quota limits.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    This will scan all models and create default permissions based on model type and user tiers.
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleSyncMissingQuotas} 
+                  disabled={saving}
+                  variant="outline"
+                  className="shrink-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 hover:from-green-500/20 hover:to-blue-500/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Sync Missing Records
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="usage" className="space-y-4">

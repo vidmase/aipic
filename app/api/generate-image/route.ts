@@ -80,6 +80,22 @@ export async function POST(request: NextRequest) {
       input.image_url = image_url;
     }
 
+    // Special handling for FLUX Kontext Max model
+    if (model === "fal-ai/flux-pro/kontext/max") {
+      const { image_url, guidance_scale, num_images, output_format, safety_tolerance, seed } = body;
+      if (!image_url) {
+        return NextResponse.json({ error: "Reference image is required for this model." }, { status: 400 });
+      }
+      input.image_url = image_url;
+      input.guidance_scale = guidance_scale || 3.5;
+      input.num_images = num_images || 1;
+      input.output_format = output_format || "jpeg";
+      input.safety_tolerance = safety_tolerance || "2";
+      if (seed) {
+        input.seed = seed;
+      }
+    }
+
     console.log("FAL.AI payload:", { model, input });
 
     // Generate image using fal.ai
@@ -109,6 +125,8 @@ export async function POST(request: NextRequest) {
       'fal-ai/stable-diffusion-v35-large': 'Stable Diffusion 3.5 Large',
       'fal-ai/hidream-i1-fast': 'HiDream I1 Fast',
       'fal-ai/flux-pro/kontext/text-to-image': 'FLUX Kontext T2I',
+      'fal-ai/flux-pro/kontext': 'FLUX Kontext',
+      'fal-ai/flux-pro/kontext/max': 'FLUX Kontext Max',
       'fal-ai/bytedance/seededit/v3/edit-image': 'SeedEdit V3',
     }
     let albumId: string | null = null

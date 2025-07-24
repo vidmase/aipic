@@ -1038,7 +1038,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   }
 
   // Fetch user accessible models based on their tier
-  const fetchUserAccessibleModels = async (userTier: string, showLoading: boolean = false) => {
+  const fetchUserAccessibleModels = React.useCallback(async (userTier: string, showLoading: boolean = false) => {
     try {
       if (showLoading) setRefreshingPermissions(true)
       
@@ -1088,7 +1088,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     } finally {
       if (showLoading) setRefreshingPermissions(false)
     }
-  }
+  }, [supabase, toast])
 
   // Manual refresh function for permissions
   const refreshModelPermissions = async () => {
@@ -1170,6 +1170,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   useEffect(() => {
     let channel: any = null;
     let timeoutId: NodeJS.Timeout | null = null;
+    let isSubscribed = false;
     
     // Set a timeout to ensure profileLoading is set to false after 10 seconds
     timeoutId = setTimeout(() => {
@@ -1188,12 +1189,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         }
         return;
       }
-      let { data: profile, error: profileError } = await supabase
+      let { data: profile, error } = await supabase
         .from("profiles")
         .select("full_name, is_premium, user_tier")
         .eq("id", session.user.id)
         .single();
-      if (profileError) {
+      if (error) {
         // Try to create a profile if it doesn't exist
         const { data: newProfile, error: createError } = await supabase
           .from("profiles")
@@ -1259,58 +1260,84 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         timeoutId = null;
       }
     }
-    fetchUserAndQuota();
-    // Supabase Realtime subscription for profile changes and tier access changes
-    (async () => {
+    
+    async function setupRealtimeSubscription() {
+      if (isSubscribed) return; // Prevent multiple subscriptions
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      supabase.removeAllChannels();
       
-      // Get user's tier to filter tier_model_access changes
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_tier")
-        .eq("id", session.user.id)
-        .single();
+      // Remove any existing channels before creating new ones
+      await supabase.removeAllChannels();
       
-      const userTier = profile?.user_tier || 'free';
+      // Note: User tier is fetched dynamically in the callback when needed
       
-      channel = supabase
-        .channel('dashboard-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${session.user.id}`,
-          },
-          () => {
-            fetchUserAndQuota();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen for INSERT, UPDATE, DELETE
-            schema: 'public',
-            table: 'tier_model_access',
-          },
-          async (payload) => {
-            // Refresh accessible models when tier access changes
-            console.log('🔄 Tier model access changed, refreshing permissions...');
-            await fetchUserAccessibleModels(userTier);
-          }
-        )
-        .subscribe();
-    })();
+      try {
+        channel = supabase
+          .channel(`dashboard-updates-${session.user.id}`) // Unique channel name per user
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${session.user.id}`,
+            },
+            () => {
+              console.log('🔄 Profile updated, refreshing data...');
+              fetchUserAndQuota();
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // Listen for INSERT, UPDATE, DELETE
+              schema: 'public',
+              table: 'tier_model_access',
+            },
+                         async () => {
+               // Refresh accessible models when tier access changes
+               console.log('🔄 Tier model access changed, refreshing permissions...');
+               // Get current user tier and refresh models
+               const { data: { session } } = await supabase.auth.getSession();
+               if (session) {
+                 const { data: currentProfile } = await supabase
+                   .from("profiles")
+                   .select("user_tier")
+                   .eq("id", session.user.id)
+                   .single();
+                 
+                 const currentUserTier = currentProfile?.user_tier || 'free';
+                 await fetchUserAccessibleModels(currentUserTier);
+               }
+             }
+          )
+          .subscribe((status: string) => {
+            console.log('Realtime subscription status:', status);
+            if (status === 'SUBSCRIBED') {
+              isSubscribed = true;
+            }
+          });
+      } catch (error) {
+        console.error('Error setting up realtime subscription:', error);
+      }
+    }
+    
+    // Initialize everything
+    fetchUserAndQuota();
+    setupRealtimeSubscription();
+    
     return () => {
+      isSubscribed = false;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
       supabase.removeAllChannels();
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     };
-  }, [fetchUserAccessibleModels, supabase]);
+  }, []); // Remove dependencies to prevent re-running
 
   // Helper function to check if a model is new (within a week)
   const isModelNew = (modelId: string) => {

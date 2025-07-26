@@ -398,7 +398,56 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
 
           {/* Access & Configuration Tab */}
           <TabsContent value="access">
-            <AccessControlPanel initialData={adminData} defaultTab="models" />
+            <AccessControlPanel 
+              initialData={{
+                tiers: adminData.tiers.map(tier => ({
+                  id: tier.id,
+                  name: tier.name,
+                  display_name: tier.display_name,
+                  description: tier.description,
+                  is_active: tier.is_active
+                })),
+                models: adminData.models.map(model => ({
+                  id: model.id,
+                  model_id: model.model_id,
+                  display_name: model.display_name,
+                  description: model.description,
+                  provider: model.provider,
+                  is_active: model.is_active
+                })),
+                access: adminData.access.map(access => ({
+                  id: access.id,
+                  tier_id: access.tier_id,
+                  model_id: access.model_id,
+                  is_enabled: access.has_access,
+                  user_tiers: { 
+                    name: adminData.tiers.find(t => t.id === access.tier_id)?.name || '',
+                    display_name: adminData.tiers.find(t => t.id === access.tier_id)?.display_name || ''
+                  },
+                  image_models: { 
+                    model_id: adminData.models.find(m => m.id === access.model_id)?.model_id || '',
+                    display_name: adminData.models.find(m => m.id === access.model_id)?.display_name || ''
+                  }
+                })),
+                quotas: adminData.quotas.map(quota => ({
+                  id: quota.id,
+                  tier_id: quota.tier_id,
+                  model_id: quota.model_id,
+                  daily_limit: quota.daily_limit,
+                  monthly_limit: 0, // Default if not available
+                  hourly_limit: 0, // Default if not available
+                  user_tiers: { 
+                    name: adminData.tiers.find(t => t.id === quota.tier_id)?.name || '',
+                    display_name: adminData.tiers.find(t => t.id === quota.tier_id)?.display_name || ''
+                  },
+                  image_models: { 
+                    model_id: adminData.models.find(m => m.id === quota.model_id)?.model_id || '',
+                    display_name: adminData.models.find(m => m.id === quota.model_id)?.display_name || ''
+                  }
+                }))
+              }} 
+              defaultTab="models" 
+            />
           </TabsContent>
 
           {/* Other tabs will be implemented in the AccessControlPanel */}

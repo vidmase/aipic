@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import NextImage from "next/image"
+import { LazyOptimizedImage, OptimizedImage } from "@/components/ui/optimized-image"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -3128,6 +3129,9 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                         priority={index === 0}
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = "/placeholder.svg"
+                                        }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                                     </div>

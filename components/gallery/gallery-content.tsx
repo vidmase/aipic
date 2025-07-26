@@ -3,8 +3,8 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, ArrowLeft } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
+import Image from "next/image"
 
 interface GalleryImage {
   id: string
@@ -83,6 +83,9 @@ export function GalleryContent({ images }: GalleryContentProps) {
                     fill 
                     className="object-cover"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/placeholder.svg"
+                    }}
                   />
                 </div>
                 <CardContent className="p-4">

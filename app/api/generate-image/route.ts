@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import * as fal from "@fal-ai/serverless-client"
 import { quotaManager } from "@/lib/quota-manager"
+import { createErrorResponse, logError, ERROR_CODES } from "@/lib/monitoring/error-utils"
 
 // Configure fal client
 fal.config({
@@ -11,43 +12,65 @@ fal.config({
 // Image generation quota removed for now
 
 export async function POST(request: NextRequest) {
+  const timeoutMs = 45000; // 45 second timeout
+  let requestBody: any;
+  let user: any;
+  
   try {
     const supabase = await createServerClient()
 
     // Check authentication
-      const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user: authenticatedUser },
+    } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!authenticatedUser) {
+      const error = new Error("User not authenticated");
+      return createErrorResponse(error, {
+        endpoint: 'generate-image',
+        code: ERROR_CODES.AUTHENTICATION_ERROR,
+        statusCode: 401
+      });
     }
 
-    const body = await request.json();
-    const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = body;
+    user = authenticatedUser;
+    requestBody = await request.json();
+    const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = requestBody;
 
     // Check model access
     const hasModelAccess = await quotaManager.checkModelAccess(user.id, model)
     if (!hasModelAccess) {
-      return NextResponse.json({
-        error: "You don't have access to this model. Please upgrade your plan or contact support."
-      }, { status: 403 })
+      const error = new Error("Model access denied");
+      return createErrorResponse(error, {
+        endpoint: 'generate-image',
+        userId: user.id,
+        model,
+        code: ERROR_CODES.MODEL_UNAVAILABLE,
+        statusCode: 403
+      });
     }
 
     // Check quota limits
     const quotaCheck = await quotaManager.checkQuota(user.id, model)
     if (!quotaCheck.allowed) {
-      return NextResponse.json({
-        error: `Generation limit reached: ${quotaCheck.reason}`,
-        quotaInfo: {
-          usage: quotaCheck.usage,
-          limits: quotaCheck.limits
-        }
-      }, { status: 429 })
+      const error = new Error(`Generation limit reached: ${quotaCheck.reason}`);
+      return createErrorResponse(error, {
+        endpoint: 'generate-image',
+        userId: user.id,
+        model,
+        code: ERROR_CODES.QUOTA_EXCEEDED,
+        statusCode: 429
+      });
     }
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
+      const error = new Error("Prompt is required");
+      return createErrorResponse(error, {
+        endpoint: 'generate-image',
+        userId: user.id,
+        code: ERROR_CODES.INVALID_PROMPT,
+        statusCode: 400
+      });
     }
 
     // Build FAL.AI input payload
@@ -62,18 +85,32 @@ export async function POST(request: NextRequest) {
 
     // Special handling for FLUX Kontext Edit
     if (model === "fal-ai/flux-pro/kontext") {
-      const { image_url } = body;
+      const { image_url } = requestBody;
       if (!image_url) {
-        return NextResponse.json({ error: "Reference image is required for this model." }, { status: 400 });
+        const error = new Error("Reference image is required for this model");
+        return createErrorResponse(error, {
+          endpoint: 'generate-image',
+          userId: user.id,
+          model,
+          code: ERROR_CODES.INVALID_PROMPT,
+          statusCode: 400
+        });
       }
       input.image_url = image_url;
     }
 
     // Special handling for FLUX Kontext Max model
     if (model === "fal-ai/flux-pro/kontext/max") {
-      const { image_url, guidance_scale, num_images, output_format, safety_tolerance, seed } = body;
+      const { image_url, guidance_scale, num_images, output_format, safety_tolerance, seed } = requestBody;
       if (!image_url) {
-        return NextResponse.json({ error: "Reference image is required for this model." }, { status: 400 });
+        const error = new Error("Reference image is required for this model");
+        return createErrorResponse(error, {
+          endpoint: 'generate-image',
+          userId: user.id,
+          model,
+          code: ERROR_CODES.INVALID_PROMPT,
+          statusCode: 400
+        });
       }
       input.image_url = image_url;
       input.guidance_scale = guidance_scale || 3.5;
@@ -87,19 +124,40 @@ export async function POST(request: NextRequest) {
 
     console.log("FAL.AI payload:", { model, input });
 
-    // Generate image using fal.ai
+    // Generate image using fal.ai with timeout
     let result: any
     try {
-      result = await fal.subscribe(model, {
-        input,
-      })
+      result = await Promise.race([
+        fal.subscribe(model, { input }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Generation timeout')), timeoutMs)
+        )
+      ]);
     } catch (falError: any) {
-      console.error("FAL.AI error:", falError)
-      return NextResponse.json({ error: falError?.message || "FAL.AI error", details: falError }, { status: 500 })
+      const isTimeout = falError.message?.includes('timeout');
+      const errorCode = isTimeout ? ERROR_CODES.GENERATION_TIMEOUT : ERROR_CODES.INTERNAL_ERROR;
+      
+      return createErrorResponse(falError, {
+        endpoint: 'generate-image',
+        userId: user.id,
+        model,
+        prompt,
+        code: errorCode,
+        statusCode: isTimeout ? 408 : 500,
+        retryAfter: isTimeout ? 60 : undefined
+      });
     }
 
     if (!result.images || result.images.length === 0) {
-      return NextResponse.json({ error: "Failed to generate image" }, { status: 500 })
+      const error = new Error("No images generated");
+      return createErrorResponse(error, {
+        endpoint: 'generate-image',
+        userId: user.id,
+        model,
+        prompt,
+        code: ERROR_CODES.INTERNAL_ERROR,
+        statusCode: 500
+      });
     }
 
     // --- Image Analysis & Album Categorization ---
@@ -184,7 +242,13 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("Error generating image:", error)
-    return NextResponse.json({ error: "Failed to generate image" }, { status: 500 })
+    return createErrorResponse(error as Error, {
+      endpoint: 'generate-image',
+      userId: user?.id,
+      model: requestBody?.model,
+      prompt: requestBody?.prompt,
+      code: ERROR_CODES.INTERNAL_ERROR,
+      statusCode: 500
+    });
   }
 }

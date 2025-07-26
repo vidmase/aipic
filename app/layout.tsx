@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LocaleProvider } from "@/components/providers/locale-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { ErrorBoundaryWrapper } from "@/components/error-boundary-wrapper"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,12 +31,14 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className={inter.className}>
-        <LocaleProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </LocaleProvider>
+        <ErrorBoundaryWrapper>
+          <LocaleProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+              {children}
+              <Toaster />
+            </ThemeProvider>
+          </LocaleProvider>
+        </ErrorBoundaryWrapper>
       </body>
     </html>
   )

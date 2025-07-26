@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     'Cache-Control': 'no-cache, no-store, must-revalidate',
   }
 
-  console.log("🚀 SeedEdit V3 API called")
+  console.log("🚀 FLUX Kontext Max Edit API called")
   try {
     const { prompt, image_url, guidance_scale = 0.5, seed } = await request.json()
     console.log("📝 Request data:", { prompt, image_url, guidance_scale, seed })
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Check quota
     console.log("📊 Checking quota...")
-    const model = "fal-ai/bytedance/seededit/v3/edit-image"
+    const model = "fal-ai/flux-pro/kontext/max"
     
     let quotaCheck
     try {
@@ -110,11 +110,14 @@ export async function POST(request: NextRequest) {
     
 
     // Call fal.ai API using official client with timeout
-    console.log("🎨 Calling fal.ai SeedEdit V3 API...")
+    console.log("🎨 Calling fal.ai FLUX Kontext Max API...")
     const falInput = {
       prompt,
       image_url,
-      guidance_scale,
+      guidance_scale: guidance_scale || 3.5,
+      num_images: 1,
+      output_format: "jpeg",
+      safety_tolerance: "2",
       ...(seed && { seed }),
     }
     console.log("📤 Sending to fal.ai:", falInput)
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log("📡 Attempting fal.run...")
         result = await withTimeout(
-          fal.run("fal-ai/bytedance/seededit/v3/edit-image", {
+          fal.run("fal-ai/flux-pro/kontext/max", {
             input: falInput,
           }),
           timeoutMs
@@ -145,7 +148,7 @@ export async function POST(request: NextRequest) {
       } catch (runError) {
         console.log("❌ fal.run failed, trying fal.subscribe:", runError)
         result = await withTimeout(
-          fal.subscribe("fal-ai/bytedance/seededit/v3/edit-image", {
+          fal.subscribe("fal-ai/flux-pro/kontext/max", {
             input: falInput,
             logs: true,
             onQueueUpdate: (update) => {
@@ -197,15 +200,15 @@ export async function POST(request: NextRequest) {
     console.log("✅ API response valid")
     console.log("🖼️ Extracted image data:", { url: imageData.url, seed: generatedSeed })
 
-    // Find or create "SeedEdit V3" album
-    console.log("📁 Finding/creating SeedEdit V3 album...")
+    // Find or create "FLUX Kontext Max" album (for edited images)
+    console.log("📁 Finding/creating FLUX Kontext Max album...")
     let album
     try {
       const { data: albumData, error: albumError } = await supabase
         .from("albums")
         .select("id")
         .eq("user_id", user.id)
-        .eq("name", "SeedEdit V3")
+        .eq("name", "FLUX Kontext Max")
         .single()
 
       if (albumError && albumError.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -216,12 +219,12 @@ export async function POST(request: NextRequest) {
       album = albumData
 
       if (!album) {
-        console.log("📁 Creating new SeedEdit V3 album...")
+        console.log("📁 Creating new FLUX Kontext Max album...")
         const { data: newAlbum, error: createError } = await supabase
           .from("albums")
           .insert({ 
             user_id: user.id, 
-            name: "SeedEdit V3",
+            name: "FLUX Kontext Max",
             cover_image_url: imageData.url  // Set the first image as cover
           })
           .select("id")
@@ -330,7 +333,7 @@ export async function POST(request: NextRequest) {
     await quotaManager.trackUsage(user.id, model, 1)
     console.log("✅ Usage tracked")
 
-    console.log("🎉 SeedEdit V3 image editing completed successfully!")
+    console.log("🎉 FLUX Kontext Max image editing completed successfully!")
     return NextResponse.json({
       image: savedImage,
       quotaInfo: {
@@ -339,7 +342,7 @@ export async function POST(request: NextRequest) {
       }
     }, { headers })
   } catch (error) {
-    console.error("💥 Fatal error in SeedEdit V3 API:", error)
+    console.error("💥 Fatal error in FLUX Kontext Max Edit API:", error)
     console.error("Error type:", typeof error)
     console.error("Error name:", error instanceof Error ? error.name : "Unknown")
     console.error("Error message:", error instanceof Error ? error.message : String(error))

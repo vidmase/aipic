@@ -30,7 +30,7 @@ export const ERROR_CODES = {
 // User-friendly error messages
 const ERROR_MESSAGES: Record<string, string> = {
   [ERROR_CODES.GENERATION_TIMEOUT]: 'Image generation is taking longer than expected. Please try with a simpler prompt or different settings.',
-  [ERROR_CODES.QUOTA_EXCEEDED]: 'You have reached your generation limit. Please upgrade your plan or wait for the quota to reset.',
+  [ERROR_CODES.QUOTA_EXCEEDED]: '🚨 Generation limit reached! Upgrade to Premium for unlimited access or wait for your quota to reset.',
   [ERROR_CODES.INVALID_PROMPT]: 'The prompt contains inappropriate content or formatting. Please revise and try again.',
   [ERROR_CODES.NETWORK_ERROR]: 'Network connection error. Please check your internet connection and try again.',
   [ERROR_CODES.AUTHENTICATION_ERROR]: 'Authentication failed. Please sign in again.',

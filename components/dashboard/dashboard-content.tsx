@@ -93,6 +93,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   const [quotaUsed, setQuotaUsed] = useState<number | null>(null)
   const [quotaLimit, setQuotaLimit] = useState<number>(3) // Keep in sync with API
   const [quotaLeft, setQuotaLeft] = useState<number | null>(null)
+
   const [pinDialogOpen, setPinDialogOpen] = useState(false)
   const [pinInput, setPinInput] = useState("")
   const [pinError, setPinError] = useState("")
@@ -382,6 +383,12 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
       const endpoint = model === 'fal-ai/bytedance/seededit/v3/edit-image' 
         ? "/api/edit-image" 
         : "/api/generate-image"
+      
+      console.log('🚀 Frontend Debug - About to send request:', {
+        selectedModel: model,
+        endpoint: endpoint,
+        prompt: prompt.substring(0, 50) + '...'
+      });
       
       const response = await fetch(endpoint, {
         method: "POST",
@@ -1109,7 +1116,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
   // Check if a model is accessible to the current user
   const isModelAccessible = (modelId: string) => {
-    const isAccessible = userAccessibleModels.includes(modelId) || !isFreeUser
+    // Always check the database-based permissions from userAccessibleModels
+    const isAccessible = userAccessibleModels.includes(modelId)
     // Only log when access is denied to avoid console spam
     if (!isAccessible) {
       console.log(`🔐 Model ${modelId} access denied:`, {
@@ -1120,6 +1128,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     }
     return isAccessible
   }
+
+
 
   // Parse quota limit error and show custom dialog
   const handleQuotaLimitError = (errorMessage: string) => {
@@ -1290,25 +1300,26 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         }
       }
       
-      if (!isPremium) {
-        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count } = await supabase
-          .from("generated_images")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", session.user.id)
-          .gte("created_at", since);
-        setQuotaUsed(count ?? 0);
-        setQuotaLeft(
-          typeof count === "number"
-            ? Math.max(IMAGE_GENERATION_QUOTA_PER_DAY - count, 0)
-            : 0
-        );
-        setQuotaLimit(IMAGE_GENERATION_QUOTA_PER_DAY);
-      } else {
-        setQuotaUsed(null);
-        setQuotaLeft(null);
-        setQuotaLimit(Infinity);
-      }
+             // For now, use legacy quota logic - will implement API-based quota later
+       if (!isPremium) {
+         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+         const { count } = await supabase
+           .from("generated_images")
+           .select("id", { count: "exact", head: true })
+           .eq("user_id", session.user.id)
+           .gte("created_at", since);
+         setQuotaUsed(count ?? 0);
+         setQuotaLeft(
+           typeof count === "number"
+             ? Math.max(IMAGE_GENERATION_QUOTA_PER_DAY - count, 0)
+             : 0
+         );
+         setQuotaLimit(IMAGE_GENERATION_QUOTA_PER_DAY);
+       } else {
+         setQuotaUsed(null);
+         setQuotaLeft(null);
+         setQuotaLimit(Infinity);
+       }
       setProfileLoading(false);
       // Clear the timeout since we're done loading
       if (timeoutId) {
@@ -1471,6 +1482,8 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
     } else {
       setGuidanceScale(7.5) // Default for other models (1-20 range)
     }
+
+
   }, [model, availableModels])
 
 

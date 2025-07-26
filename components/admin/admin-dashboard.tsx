@@ -72,7 +72,7 @@ interface AccessRecord {
   id: string
   tier_id: string
   model_id: string
-  has_access: boolean
+  is_enabled: boolean
 }
 
 interface QuotaRecord {
@@ -80,6 +80,8 @@ interface QuotaRecord {
   tier_id: string
   model_id: string
   daily_limit: number
+  monthly_limit: number
+  hourly_limit: number
 }
 
 interface AdminData {
@@ -419,7 +421,7 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
                   id: access.id,
                   tier_id: access.tier_id,
                   model_id: access.model_id,
-                  is_enabled: access.has_access,
+                  is_enabled: access.is_enabled,
                   user_tiers: { 
                     name: adminData.tiers.find(t => t.id === access.tier_id)?.name || '',
                     display_name: adminData.tiers.find(t => t.id === access.tier_id)?.display_name || ''
@@ -434,8 +436,8 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
                   tier_id: quota.tier_id,
                   model_id: quota.model_id,
                   daily_limit: quota.daily_limit,
-                  monthly_limit: 0, // Default if not available
-                  hourly_limit: 0, // Default if not available
+                  monthly_limit: quota.monthly_limit || 0,
+                  hourly_limit: quota.hourly_limit || 0,
                   user_tiers: { 
                     name: adminData.tiers.find(t => t.id === quota.tier_id)?.name || '',
                     display_name: adminData.tiers.find(t => t.id === quota.tier_id)?.display_name || ''

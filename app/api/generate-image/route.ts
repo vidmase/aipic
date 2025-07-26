@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     user = authenticatedUser;
     requestBody = await request.json();
     const { prompt, model = "fal-ai/fast-sdxl", aspectRatio = "1:1", num_images = 1 } = requestBody;
+    
+    console.log('🔍 Backend Debug - Received request:', {
+      receivedModel: model,
+      userId: user.id,
+      prompt: prompt?.substring(0, 50) + '...',
+      requestBodyKeys: Object.keys(requestBody)
+    });
 
     // Check model access
     const hasModelAccess = await quotaManager.checkModelAccess(user.id, model)
@@ -164,20 +171,32 @@ export async function POST(request: NextRequest) {
     // Album name is the display name from the model dropdown
     const modelDisplayNames: Record<string, string> = {
       'fal-ai/fast-sdxl': 'Fast SDXL',
+      'fal-ai/hidream-i1-fast': 'HiDream I1 Fast',
       'fal-ai/flux/dev': 'FLUX Dev',
+      'fal-ai/flux/schnell': 'FLUX Schnell',
       'fal-ai/flux-pro/v1.1-ultra': 'FLUX Pro Ultra',
+      'fal-ai/flux-pro/kontext': 'FLUX Kontext',
+      'fal-ai/flux-pro/kontext/text-to-image': 'FLUX Kontext T2I',
+      'fal-ai/flux-pro/kontext/max': 'FLUX Kontext Max',
       'fal-ai/ideogram/v2': 'Ideogram v2',
       'fal-ai/ideogram/v3': 'Ideogram v3',
       'fal-ai/recraft-v3': 'Recraft V3',
+      'fal-ai/imagen4/preview': 'Imagen 4 Preview',
+      'fal-ai/imagen4/preview/fast': 'Imagen 4 Fast',
+      'fal-ai/imagen4/preview/ultra': 'Imagen 4 Ultra',
       'fal-ai/stable-diffusion-v35-large': 'Stable Diffusion 3.5 Large',
-      'fal-ai/hidream-i1-fast': 'HiDream I1 Fast',
-      'fal-ai/flux-pro/kontext/text-to-image': 'FLUX Kontext T2I',
-      'fal-ai/flux-pro/kontext': 'FLUX Kontext',
-      'fal-ai/flux-pro/kontext/max': 'FLUX Kontext Max',
       'fal-ai/bytedance/seededit/v3/edit-image': 'SeedEdit V3',
+      'rundiffusion-fal/juggernaut-flux-lora/inpainting': 'Juggernaut FLUX Inpainting',
     }
     let albumId: string | null = null
     const albumName = modelDisplayNames[model] || model.split('/').pop() || "Uncategorized"
+    
+    console.log('📁 Album Debug - Model and Album Info:', {
+      originalModel: model,
+      mappedAlbumName: albumName,
+      hasDisplayName: !!modelDisplayNames[model],
+      allAvailableDisplayNames: Object.keys(modelDisplayNames)
+    });
 
     // Try to find an existing album for the user with a matching name
     const { data: existingAlbum } = await supabase
@@ -187,10 +206,18 @@ export async function POST(request: NextRequest) {
       .ilike("name", albumName)
       .maybeSingle()
 
+    console.log('📁 Album Search Result:', {
+      searchedName: albumName,
+      foundExisting: !!existingAlbum,
+      existingAlbumId: existingAlbum?.id
+    });
+
     if (existingAlbum && existingAlbum.id) {
       albumId = existingAlbum.id
+      console.log('📁 Using existing album:', albumId);
     } else {
       // Create a new album
+      console.log('📁 Creating new album with name:', albumName);
       const { data: newAlbum, error: albumError } = await supabase
         .from("albums")
         .insert({ user_id: user.id, name: albumName, cover_image_url: result.images[0].url })

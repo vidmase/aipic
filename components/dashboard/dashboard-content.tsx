@@ -1109,24 +1109,30 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
   // Check if a model is accessible to the current user
   const isModelAccessible = (modelId: string) => {
     const isAccessible = userAccessibleModels.includes(modelId) || !isFreeUser
-    console.log(`🔐 Model ${modelId} accessibility check:`, {
-      isFreeUser,
-      isInAccessibleList: userAccessibleModels.includes(modelId),
-      userAccessibleModels,
-      finalResult: isAccessible
-    })
+    // Only log when access is denied to avoid console spam
+    if (!isAccessible) {
+      console.log(`🔐 Model ${modelId} access denied:`, {
+        isFreeUser,
+        isInAccessibleList: userAccessibleModels.includes(modelId),
+        userAccessibleModels
+      })
+    }
     return isAccessible
   }
 
   // Parse quota limit error and show custom dialog
   const handleQuotaLimitError = (errorMessage: string) => {
+    console.log('🚨 Handling quota error:', errorMessage)
+    
     // Extract quota information from error message
     // Example: "Generation limit reached: Hourly limit exceeded (1/1)"
-    const quotaMatch = errorMessage.match(/(.+) limit exceeded \((\d+)\/(\d+)\)/i)
+    const quotaMatch = errorMessage.match(/Generation limit reached: (.+) limit exceeded \((\d+)\/(\d+)\)/i)
     
     if (quotaMatch) {
       const [, period, used, limit] = quotaMatch
       const periodType = period.toLowerCase() as "hourly" | "daily" | "monthly"
+      
+      console.log('✅ Parsed quota info:', { period, periodType, used, limit })
       
       setQuotaDialogData({
         title: "Generation Limit Reached",
@@ -1138,11 +1144,60 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
         }
       })
     } else {
-      // Fallback for general quota errors
-      setQuotaDialogData({
-        title: "Generation Limit Reached",
-        message: errorMessage.replace("Generation limit reached: ", ""),
-      })
+      // Try alternative parsing for just the reason part
+      const reasonMatch = errorMessage.match(/Generation limit reached: (.+)/i)
+      if (reasonMatch) {
+        const reason = reasonMatch[1]
+        console.log('🔍 Trying to parse reason:', reason)
+        
+        // Try to extract period from reason
+        const periodMatch = reason.match(/(.+) limit exceeded \((\d+)\/(\d+)\)/i)
+        if (periodMatch) {
+          const [, period, used, limit] = periodMatch
+          const periodType = period.toLowerCase() as "hourly" | "daily" | "monthly"
+          
+          console.log('✅ Parsed from reason:', { period, periodType, used, limit })
+          
+          setQuotaDialogData({
+            title: "Generation Limit Reached",
+            message: `You've reached your ${period.toLowerCase()} generation limit. Please wait before generating more images or consider upgrading to Premium for unlimited access.`,
+            quotaInfo: {
+              used: parseInt(used),
+              limit: parseInt(limit),
+              period: periodType
+            }
+          })
+        } else {
+          // Fallback - assume hourly and extract numbers if possible
+          const numbersMatch = reason.match(/\((\d+)\/(\d+)\)/)
+          if (numbersMatch) {
+            const [, used, limit] = numbersMatch
+            console.log('🔧 Fallback parsing - assuming hourly:', { used, limit })
+            
+            setQuotaDialogData({
+              title: "Generation Limit Reached",
+              message: errorMessage.replace("Generation limit reached: ", ""),
+              quotaInfo: {
+                used: parseInt(used),
+                limit: parseInt(limit),
+                period: "hourly" // Default fallback
+              }
+            })
+          } else {
+            console.log('❌ Could not parse quota info, using fallback')
+            setQuotaDialogData({
+              title: "Generation Limit Reached",
+              message: errorMessage.replace("Generation limit reached: ", ""),
+            })
+          }
+        }
+      } else {
+        console.log('❌ Could not parse error message at all')
+        setQuotaDialogData({
+          title: "Generation Limit Reached",
+          message: errorMessage,
+        })
+      }
     }
     
     setQuotaDialogOpen(true)
@@ -1968,216 +2023,259 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
                         {/* Generation Form - Mobile Optimized */}
                         <div className="w-full">
                         <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-0 shadow-2xl rounded-xl sm:rounded-2xl lg:rounded-3xl">
-                          <CardHeader className="text-center pb-3 sm:pb-6 px-3 sm:px-6">
-                            <CardTitle className="flex flex-col items-center justify-center space-y-2 text-xl sm:text-2xl lg:text-3xl font-bold">
-                              <span className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-500 animate-pulse">
-                                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                  </span>
-                              <span className="text-center leading-tight">{t('dashboard.generate.title')}</span>
+                          <CardHeader className="text-center pb-6 px-6">
+                            <div className="relative">
+                              {/* Animated background elements */}
+                              <div className="absolute inset-0 -z-10">
+                                <div className="absolute top-4 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-pulse opacity-60"></div>
+                                <div className="absolute top-8 right-1/3 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-40"></div>
+                                <div className="absolute bottom-6 left-1/3 w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping opacity-50"></div>
+                              </div>
+                              
+                              {/* Main icon */}
+                              <div className="relative mx-auto w-16 h-16 mb-4">
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 rounded-2xl animate-pulse opacity-20"></div>
+                                <div className="relative w-full h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                                </div>
+                              </div>
+                              
+                              {/* Title */}
+                              <CardTitle className="text-3xl font-bold mb-2">
+                                <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                  Create Magic
+                                </span>
                               </CardTitle>
-                            <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground mt-2 px-2 sm:px-0">
-                                  {t('dashboard.generate.description')}
+                              
+                              {/* Subtitle */}
+                              <CardDescription className="text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                                Transform your imagination into stunning visuals with AI
                               </CardDescription>
+                            </div>
                           </CardHeader>
                           <CardContent className="space-y-4 sm:space-y-6 lg:space-y-8 px-3 sm:px-6">
                             <form onSubmit={generateImage} className="space-y-4 sm:space-y-6 lg:space-y-8">
                               {/* Enhanced Prompt Input Area */}
-                              <div className="space-y-4 sm:space-y-6">
-                                {/* Header with actions - Mobile Optimized */}
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-2">
-                                    <Label htmlFor="prompt" className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100">
-                                      {t('dashboard.generate.prompt')}
-                                    </Label>
-                                    <div className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Required</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 w-full">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setShowExamplePrompts(!showExamplePrompts)}
-                                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 h-10 touch-manipulation"
-                                    >
-                                      <Lightbulb className="w-4 h-4" />
-                                      <span className="text-sm">{t('dashboard.generate.examplePrompts')}</span>
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setShowSmartPromptBuilder(!showSmartPromptBuilder)}
-                                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 h-10 touch-manipulation"
-                                    >
-                                      <Wand2 className="w-4 h-4" />
-                                      <span className="text-sm">{t('dashboard.generate.smartBuilder')}</span>
-                                    </Button>
-                                  </div>
-                                </div>
+                              <div className="space-y-6">
 
-                                {/* Example Prompts */}
-                                {showExamplePrompts && (
-                                  <div className="p-3 sm:p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
-                                    <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
-                                      <Lightbulb className="w-4 h-4" />
-                                      {t('dashboard.generate.examplePrompts')}
-                                    </h4>
-                                    <div className="grid grid-cols-1 gap-2">
-                                      {examplePrompts.map((example, index) => (
-                                        <button
-                                          key={index}
-                                          type="button"
-                                          onClick={() => {
-                                            setPrompt(example)
-                                            setShowExamplePrompts(false)
-                                            toast({ 
-                                              title: "Example Applied", 
-                                              description: "You can now edit and customize this prompt",
-                                              duration: 2000
-                                            })
-                                          }}
-                                          className="text-left p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md transition-all duration-200 group active:scale-95"
-                                        >
-                                          <div className="flex items-start justify-between gap-2">
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 group-hover:text-purple-700 dark:group-hover:text-purple-300">
-                                              {example}
-                                            </p>
-                                            <Copy className="w-4 h-4 text-gray-400 group-hover:text-purple-500 shrink-0 mt-0.5" />
-                                          </div>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
 
-                                {/* Main prompt input - Mobile Optimized */}
+
+
+                                {/* Premium Prompt Input Container */}
                                 <div className="relative">
-                                  <div className="space-y-3">
-                                    <div className="w-full relative">
-                                  <Textarea
-                                    id="prompt"
-                                        placeholder={t('dashboard.generate.promptPlaceholderInspiring')}
-                                    value={prompt}
-                                    onChange={e => setPrompt(e.target.value)}
-                                    required
-                                        className="min-h-[140px] sm:min-h-[160px] text-base leading-relaxed resize-none focus:ring-2 focus:ring-purple-500 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 touch-manipulation"
-                                  />
-                                      {/* Character counter */}
-                                      <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
-                                      {prompt.length} chars
-                                    </div>
-                                </div>
-                                <Button
-                                  type="button"
-                                      variant="ghost"
-                                  disabled={improvingPrompt || !prompt.trim()}
-                                      title="Improve prompt with AI"
-                                      className="w-full h-12 hover:bg-yellow-50 hover:border-yellow-200 border border-transparent touch-manipulation"
-                                  onClick={async () => {
-                                    setImprovingPrompt(true)
-                                    try {
-                                      const res = await fetch("/api/improve-prompt", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ prompt }),
-                                      })
-                                      const data = await res.json()
-                                      if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
-                                      setPrompt(data.improved)
-                                      toast({ 
-                                        title: "Prompt Enhanced!", 
-                                        description: "Your prompt has been improved with AI suggestions",
-                                        duration: 3000
-                                      })
-                                    } catch (err: any) {
-                                      toast({ title: "Error", description: err.message, variant: "destructive" })
-                                    } finally {
-                                      setImprovingPrompt(false)
-                                    }
-                                  }}
-                                >
-                                  {improvingPrompt ? (
-                                        <div className="flex items-center gap-2">
-                                          <div className="animate-spin">
-                                            <Sparkles className="w-5 h-5 text-yellow-500" />
+                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl blur-xl"></div>
+                                  <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                                    <div className="space-y-4">
+                                      <div className="relative">
+                                        <Textarea
+                                          id="prompt"
+                                          placeholder={t('dashboard.generate.promptPlaceholderInspiring')}
+                                          value={prompt}
+                                          onChange={e => {
+                                            const value = e.target.value
+                                            if (value.length <= 2000) {
+                                              setPrompt(value)
+                                            }
+                                          }}
+                                          required
+                                          maxLength={2000}
+                                          className="min-h-[160px] text-base leading-relaxed resize-none border-0 bg-transparent focus:ring-0 p-0 placeholder:text-gray-400 dark:placeholder:text-gray-500 touch-manipulation"
+                                        />
+                                        
+                                        {/* Enhanced Character Counter with Progress */}
+                                        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                                          <div className={`text-xs backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border transition-all duration-200 ${
+                                            prompt.length > 1800 
+                                              ? 'bg-red-50/90 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400'
+                                              : prompt.length > 1500
+                                              ? 'bg-yellow-50/90 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700 text-yellow-600 dark:text-yellow-400'
+                                              : 'bg-white/90 dark:bg-gray-800/90 border-gray-200/50 dark:border-gray-700/50 text-gray-500 dark:text-gray-400'
+                                          }`}>
+                                            {prompt.length}/2000
                                           </div>
-                                          <span className="text-sm font-medium">Enhancing...</span>
+                                          
+                                          {/* Progress Ring */}
+                                          <div className="relative w-6 h-6">
+                                            <svg className="w-6 h-6 transform -rotate-90" viewBox="0 0 24 24">
+                                              <circle
+                                                cx="12"
+                                                cy="12"
+                                                r="8"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                className="text-gray-200 dark:text-gray-700"
+                                              />
+                                              <circle
+                                                cx="12"
+                                                cy="12"
+                                                r="8"
+                                                fill="none"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                className={`transition-all duration-300 ${
+                                                  prompt.length > 1800 
+                                                    ? 'stroke-red-500'
+                                                    : prompt.length > 1500
+                                                    ? 'stroke-yellow-500'
+                                                    : prompt.length > 1000
+                                                    ? 'stroke-blue-500'
+                                                    : 'stroke-green-500'
+                                                }`}
+                                                strokeDasharray={`${(prompt.length / 2000) * 50.27} 50.27`}
+                                              />
+                                            </svg>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                              <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                                prompt.length > 1800 
+                                                  ? 'bg-red-500'
+                                                  : prompt.length > 1500
+                                                  ? 'bg-yellow-500'
+                                                  : prompt.length > 1000
+                                                  ? 'bg-blue-500'
+                                                  : 'bg-green-500'
+                                              }`} />
+                                            </div>
+                                          </div>
                                         </div>
-                                      ) : (
-                                        <div className="flex items-center justify-center gap-2">
-                                          <Sparkles className="w-5 h-5 text-yellow-500" />
-                                          <span className="text-yellow-600 font-bold text-sm">AI</span>
-                                          <span className="text-sm text-gray-600 font-medium">{t('dashboard.generate.enhance')}</span>
+                                      </div>
+                                                                            {/* AI Enhancement Button */}
+                                      <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          disabled={improvingPrompt || !prompt.trim()}
+                                          title="Improve prompt with AI"
+                                          className="w-full h-12 hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 dark:hover:from-yellow-900/20 dark:hover:to-orange-900/20 border border-transparent hover:border-yellow-200 dark:hover:border-yellow-700 rounded-xl transition-all duration-200 touch-manipulation"
+                                          onClick={async () => {
+                                            setImprovingPrompt(true)
+                                            try {
+                                              const res = await fetch("/api/improve-prompt", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ prompt }),
+                                              })
+                                              const data = await res.json()
+                                              if (!res.ok) throw new Error(data.error || "Failed to improve prompt")
+                                              setPrompt(data.improved)
+                                              toast({ 
+                                                title: "Prompt Enhanced!", 
+                                                description: "Your prompt has been improved with AI suggestions",
+                                                duration: 3000
+                                              })
+                                            } catch (err: any) {
+                                              toast({ title: "Error", description: err.message, variant: "destructive" })
+                                            } finally {
+                                              setImprovingPrompt(false)
+                                            }
+                                          }}
+                                        >
+                                          {improvingPrompt ? (
+                                            <div className="flex items-center gap-2">
+                                              <div className="animate-spin">
+                                                <Sparkles className="w-5 h-5 text-yellow-500" />
+                                              </div>
+                                              <span className="text-sm font-medium">Enhancing...</span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center justify-center gap-2">
+                                              <Sparkles className="w-5 h-5 text-yellow-500" />
+                                              <span className="text-yellow-600 font-bold text-sm">AI</span>
+                                              <span className="text-sm text-gray-600 font-medium">{t('dashboard.generate.enhance')}</span>
+                                            </div>
+                                          )}
+                                        </Button>
+                                        
+                                        {/* Smart Helper Messages */}
+                                        <div className="mt-3">
+                                          <div className={`text-xs text-center transition-all duration-300 ${
+                                            prompt.length > 1800 
+                                              ? 'text-red-500 dark:text-red-400'
+                                              : prompt.length > 1500
+                                              ? 'text-amber-500 dark:text-amber-400'
+                                              : prompt.length > 500
+                                              ? 'text-green-500 dark:text-green-400'
+                                              : 'text-gray-400 dark:text-gray-500'
+                                          }`}>
+                                            {prompt.length > 1800 ? (
+                                              <span className="flex items-center justify-center gap-1 font-medium">
+                                                ⚠️ {2000 - prompt.length} characters remaining
+                                              </span>
+                                            ) : prompt.length > 1500 ? (
+                                              <span className="flex items-center justify-center gap-1">
+                                                ✨ Perfect length - consider finalizing your prompt
+                                              </span>
+                                            ) : prompt.length > 500 ? (
+                                              <span className="flex items-center justify-center gap-1">
+                                                🎯 Excellent detail! Add more if needed
+                                              </span>
+                                            ) : prompt.length > 100 ? (
+                                              <span>💡 Great start! Add style, mood, and composition details</span>
+                                            ) : null}
+                                          </div>
                                         </div>
-                                  )}
-                                </Button>
+                                      </div>
+                                    </div>
                                   </div>
-                                  {/* Helper text */}
-                                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-2">
-                                    <Brain className="w-3 h-3 sm:w-4 sm:h-4" />
-                                    {t('dashboard.generate.promptHelperText')}
-                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Compact Model Selector */}
+                              <div className="bg-gradient-to-r from-gray-50/50 to-blue-50/50 dark:from-gray-800/50 dark:to-blue-900/20 rounded-xl p-3 border border-gray-200/50 dark:border-gray-700/50">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    {(() => {
+                                      const currentModel = availableModels.find(m => m.id === model);
+                                      if (!currentModel) return (
+                                        <div className="flex items-center gap-2 text-gray-500">
+                                          <Bot className="w-4 h-4" />
+                                          <span className="text-sm">Loading model...</span>
+                                        </div>
+                                      );
+                                      return (
+                                        <>
+                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentModel.bgColor} shrink-0`}>
+                                            <currentModel.icon className={`w-4 h-4 ${currentModel.iconColor}`} />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                {currentModel.name}
+                                              </span>
+                                              {currentModel.price && (
+                                                <span className="text-xs text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+                                                  {currentModel.price}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">
+                                              {currentModel.category}
+                                            </span>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                  <Button 
+                                    type="button"
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="h-8 px-3 text-xs hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-transparent hover:border-blue-200 dark:hover:border-blue-700"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setModelPanelOpen(true)
+                                    }}
+                                  >
+                                    <Settings2 className="w-3 h-3 mr-1" />
+                                    Change
+                                  </Button>
                                 </div>
                               </div>
 
                               {/* Essential Settings - Always Visible */}
                               <div className="space-y-4 sm:space-y-6">
-                                <div className="space-y-3">
-                                  <Label htmlFor="current-model" className="text-sm sm:text-base font-semibold">{t('dashboard.generate.currentModel')}</Label>
-                                  {!profileLoading ? (
-                                    <div className="p-4 border-2 rounded-xl bg-primary/5 border-primary/20">
-                                      <div className="flex items-start gap-3">
-                                        {(() => {
-                                          const currentModel = availableModels.find(m => m.id === model);
-                                          if (!currentModel) return null;
-                                          return (
-                                            <>
-                                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${currentModel.bgColor} shrink-0`}>
-                                                <currentModel.icon className={`w-6 h-6 ${currentModel.iconColor}`} />
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                  <h3 className="font-semibold text-base sm:text-lg leading-tight">{currentModel.name}</h3>
-                                                  <div className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 self-start">
-                                                    {t('dashboard.generate.active')}
-                                                  </div>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{currentModel.description}</p>
-                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
-                                                  <span className="text-sm font-medium text-primary">{currentModel.category}</span>
-                                                  {currentModel.price && (
-                                                    <span className="text-sm font-medium text-green-600">{currentModel.price}</span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </>
-                                          );
-                                        })()}
-                                      </div>
-                                      <div className="mt-4 pt-4 border-t border-primary/10">
-                                        <Button 
-                                          type="button"
-                                          variant="ghost" 
-                                          className="w-full text-primary hover:bg-primary/10 h-11 touch-manipulation"
-                                          onClick={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            setModelPanelOpen(true)
-                                          }}
-                                        >
-                                          <Bot className="w-5 h-5 mr-2" />
-                                          <span className="text-base">{t('dashboard.generate.chooseModel')}</span>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse flex items-center justify-center">
-                                      <span className="text-gray-500 text-sm">{t('dashboard.generate.loadingModel')}</span>
-                                    </div>
-                                  )}
-                                </div>
+
 
                                 <div className="space-y-3">
                                   <Label htmlFor="aspectRatio" className="text-sm sm:text-base font-semibold">{t('dashboard.generate.aspectRatio')}</Label>

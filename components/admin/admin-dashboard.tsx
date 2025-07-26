@@ -398,7 +398,7 @@ export function AdminDashboard({ users: initialUsers, currentAdminEmail, adminDa
 
           {/* Access & Configuration Tab */}
           <TabsContent value="access">
-            <AccessControlPanel initialData={{tiers: [], models: [], access: [], quotas: []}} defaultTab="models" />
+            <AccessControlPanel initialData={adminData} defaultTab="models" />
           </TabsContent>
 
           {/* Other tabs will be implemented in the AccessControlPanel */}

@@ -85,6 +85,47 @@ Check these in Netlify dashboard:
 
 If functions consistently timeout, consider architectural changes or plan upgrades.
 
+## Vercel Deployment
+
+Similar to Netlify, Vercel serverless functions have execution timeouts that can affect long-running AI image processing tasks.
+
+### Vercel Timeout Limits
+- **Hobby plan**: 10 seconds
+- **Pro plan**: 60 seconds
+- **Enterprise plan**: 900 seconds
+
+The 10-second limit on the Hobby plan is very likely to be exceeded by image generation and editing APIs, leading to errors.
+
+### Configuration for Vercel
+
+A `vercel.json` file has been added to the project root to ensure smooth deployment on Vercel. This file configures:
+- **Install Command**: Sets the package installation command to `npm ci --legacy-peer-deps` to handle peer dependency resolution correctly.
+- **Environment Variables**: Includes necessary environment variables for the `sharp` image processing library.
+
+```json
+{
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next",
+      "config": {
+        "installCommand": "npm ci --legacy-peer-deps"
+      }
+    }
+  ],
+  "env": {
+    "SHARP_IGNORE_GLOBAL_LIBVIPS": "1",
+    "SHARP_FORCE_GLOBAL_LIBVIPS": "false"
+  }
+}
+```
+
+### Best Practices for Vercel
+
+1.  **Plan Upgrade**: For reliable image generation, it is highly recommended to use the **Pro plan** on Vercel to get a 60-second function timeout.
+2.  **Environment Variables**: Ensure the same environment variables listed for Netlify are also set in your Vercel project settings.
+3.  **Monitoring**: Use the Vercel dashboard to monitor function logs, execution times, and error rates.
+
 ## Image Fetching Issues (API Works but Images Don't Display)
 
 ### Symptoms

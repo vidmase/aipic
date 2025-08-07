@@ -1,0 +1,15 @@
+{
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next",
+      "config": {
+        "installCommand": "npm ci --legacy-peer-deps"
+      }
+    }
+  ],
+  "env": {
+    "SHARP_IGNORE_GLOBAL_LIBVIPS": "1",
+    "SHARP_FORCE_GLOBAL_LIBVIPS": "false"
+  }
+}

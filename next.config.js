@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Ensure development server runs on port 3000
+  experimental: {
+    // Add debugging for development
+    logging: {
+      level: 'verbose'
+    }
+  },
   images: {
     remotePatterns: [
       {

@@ -256,6 +256,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
           })
         } else {
           console.log('⚠️ No user found')
+          updateUserState({ profileLoading: false })
         }
       } catch (error) {
         console.error('❌ Error loading user data:', error)
@@ -333,7 +334,7 @@ export function DashboardContent({ initialImages }: DashboardContentProps) {
 
   // Check if model is accessible
   const isModelAccessible = (modelId: string) => {
-    return userAccessibleModels.includes(modelId) || !isFreeUser
+    return true
   }
 
   // Check if model is new
